@@ -15,15 +15,15 @@
 ; Various assembly flags
 ; ---------------------------------------------------------------------------
 
-FEATURE_SAFE_PSGFREQ =	0	; set to 1 to enable safety checks for PSG frequency. Some S3K SFX require this to be 0
+FEATURE_SAFE_PSGFREQ =	1	; set to 1 to enable safety checks for PSG frequency. Some S3K SFX require this to be 0
 FEATURE_SFX_MASTERVOL =	0	; set to 1 to make SFX use master volumes
 FEATURE_MODULATION =	1	; set to 1 to enable software modulation effect
 FEATURE_PORTAMENTO =	1	; set to 1 to enable portamento flag
 FEATURE_MODENV =	1	; set to 1 to enable modulation envelopes
 FEATURE_DACFMVOLENV =	1	; set to 1 to enable volume envelopes for FM & DAC channels.
-FEATURE_UNDERWATER =	0	; set to 1 to enable underwater mode
-FEATURE_BACKUP =	0	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
-FEATURE_BACKUPNOSFX =	0	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
+FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
+FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
+FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
 FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
