@@ -77,8 +77,18 @@ AMPS_Debug_GetChannel	macro
 .cfm3
 	cmp.w	#mFM3,a1
 	bne.s	.cfm4
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)
+		bne.s	.ctfm3op1
+	endif
 	Console.Write "FM3"
 	bra.w	.end
+
+	if FEATURE_FM3SM
+.ctfm3op1
+		Console.Write "FM3o1"
+		bra.w	.end
+	endif
 
 .cfm4
 	cmp.w	#mFM4,a1
@@ -88,9 +98,29 @@ AMPS_Debug_GetChannel	macro
 
 .cfm5
 	cmp.w	#mFM5,a1
-	bne.s	.cfms3
+	bne.s	.ctfm3op2
 	Console.Write "FM5"
 	bra.w	.end
+
+.ctfm3op2
+	if FEATURE_FM3SM
+		cmp.w	#mFM3op2,a1
+		bne.s	.ctfm3op3
+		Console.Write "FM3o2"
+		bra.w	.end
+
+.ctfm3op3
+		cmp.w	#mFM3op3,a1
+		bne.s	.ctfm3op4
+		Console.Write "FM3o3"
+		bra.w	.end
+
+.ctfm3op4
+		cmp.w	#mFM3op4,a1
+		bne.s	.cfms3
+		Console.Write "FM3o4"
+		bra.w	.end
+	endif
 
 .cfms3
 	cmp.w	#mSFXFM3,a1
@@ -310,6 +340,7 @@ AMPS_Debug_FadeCmd	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -331,6 +362,7 @@ AMPS_Debug_VolEnvID	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -352,6 +384,7 @@ AMPS_Debug_VolEnvCmd	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -368,6 +401,7 @@ AMPS_Debug_ModEnvID	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -390,6 +424,7 @@ AMPS_Debug_NotePSG	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -413,6 +448,7 @@ AMPS_Debug_NoteFM	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -438,6 +474,7 @@ AMPS_Debug_FreqDAC	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -502,6 +539,7 @@ AMPS_Debug_dcVoiceEnv	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -525,6 +563,7 @@ AMPS_Debug_dcVolEnv	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -560,13 +599,32 @@ AMPS_DebugR_dcBackup:
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Handler for disabled features - Special FM 3
+; ---------------------------------------------------------------------------
+
+AMPS_Debug_dcSpecFM3	macro
+	if isAMPS		; check if Vladik's debugger is active
+		jsr	AMPS_DebugR_dcSpecFM3
+	else
+		bra.w	*
+	endif
+    endm
+
+	if FEATURE_FM3SM=0
+	if isAMPS		; check if Vladik's debugger is active
+AMPS_DebugR_dcSpecFM3:
+		RaiseError "FM3 Special Mode feature is disabled. Set FEATURE_FM3SM to 1 to enable.", AMPS_Debug_Console_Channel
+	endif
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; PSG on sPan handler
 ; ---------------------------------------------------------------------------
 
 AMPS_Debug_dcPan	macro
 	if FEATURE_FM6
-		cmp.w	#mFM6,a1; check if this is FM6
-		beq.s	.fail	; if so, branch
+;		cmp.w	#mFM6,a1; check if this is FM6
+;		beq.s	.fail	; if so, branch
 	endif
 
 	tst.b	cType(a1)	; check for PSG channel
@@ -589,7 +647,38 @@ AMPS_Debug_dcPan	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Gate command on SFX channel handler
+; NoisePSG command on an invalid channel handler
+; ---------------------------------------------------------------------------
+
+AMPS_Debug_dcNoisePSG	macro
+	beq.s	.ckch		; branch if value is 0
+	cmp.b	#snPeri10,d3	; check if the value is below valid range
+	blo.s	.fail		; branch if yes
+	cmp.b	#snWhitePSG3,d3	; check if the value is above valid range
+	bls.s	.ckch		; branch if not
+
+.fail
+	if isAMPS		; check if Vladik's debugger is active
+		RaiseError "sNoisePSG with an invalid value: %<.b d3>", AMPS_Debug_Console_Channel
+	else
+		bra.w	*
+	endif
+
+.ckch
+	cmp.b	#ctPSG3,cType(a1); check if this is PSG3 or PSG4 channel
+	bhs.s	.ok		; if not, branch
+
+	if isAMPS		; check if Vladik's debugger is active
+		RaiseError "sNoisePSG on an invalid channel!", AMPS_Debug_Console_Channel
+	else
+		bra.w	*
+	endif
+
+.ok
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Timeout command on SFX channel handler
 ; ---------------------------------------------------------------------------
 
 AMPS_Debug_dcGate	macro
@@ -605,62 +694,33 @@ AMPS_Debug_dcGate	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; NoisePSG command on an invalid channel handler
-; ---------------------------------------------------------------------------
-
-AMPS_Debug_dcNoisePSG	macro
-	beq.s	.ckch		; branch if value is 0
-	cmp.b	#snPeri10,d3	; check if the value is below valid range
-	blo.s	.fail		; branch if yes
-	cmp.b	#snWhitePSG3,d3	; check if the value is above valid range
-	bls.s	.ckch		; branch if not
-
-.fail
-	if isAMPS		; check if Vladik's debugger is active
-		RaiseError "sNoisePSG was passed an invalid value %<.b d3>", AMPS_Debug_Console_Channel
-	else
-		bra.w	*
-	endif
-
-.ckch
-	cmp.b	#ctPSG3,cType(a1); check if this is PSG3 or PSG4 channel
-	bhs.s	.ok		; if is, branch
-
-	if isAMPS		; check if Vladik's debugger is active
-		RaiseError "sNoisePSG on an invalid channel!", AMPS_Debug_Console_Channel
-	else
-		bra.w	*
-	endif
-
-.ok
-    endm
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Call command handlers
 ; ---------------------------------------------------------------------------
 
 AMPS_Debug_dcCall1	macro
 	cmp.w	#mSFXDAC1,a1	; check for SFX channel
-	blo.s	.ok		; if no, branch
+	blo.s	.ok1		; if no, branch
 
 	if isAMPS		; check if Vladik's debugger is active
 		RaiseError "sCall on a SFX channel!", AMPS_Debug_Console_Channel
 	else
 		bra.w	*
 	endif
-.ok
+
+.ok1
     endm
 
 AMPS_Debug_dcCall2	macro
 	cmp.b	#cGateCur,d4	; check for invalid stack address
-	bhi.s	.ok		; if no, branch
+	bhi.s	.ok2		; if no, branch
 
 	if isAMPS		; check if Vladik's debugger is active
 		RaiseError "sCall stack too deep!", AMPS_Debug_Console_Channel
 	else
 		bra.w	*
 	endif
-.ok
+
+.ok2
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -691,6 +751,7 @@ AMPS_Debug_dcLoop	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -700,26 +761,28 @@ AMPS_Debug_dcLoop	macro
 
 AMPS_Debug_dcReturn1	macro
 	cmp.w	#mSFXDAC1,a1	; check for SFX channel
-	blo.s	.ok		; if no, branch
+	blo.s	.ok1		; if no, branch
 
 	if isAMPS		; check if Vladik's debugger is active
 		RaiseError "sRet on a SFX channel!", AMPS_Debug_Console_Channel
 	else
 		bra.w	*
 	endif
-.ok
+
+.ok1
     endm
 
 AMPS_Debug_dcReturn2	macro
 	cmp.b	#cSize,d3	; check for invalid stack address
-	bls.s	.ok		; if no, branch
+	bls.s	.ok2		; if no, branch
 
 	if isAMPS		; check if Vladik's debugger is active
 		RaiseError "sRet stack too shallow!", AMPS_Debug_Console_Channel
 	else
 		bra.w	*
 	endif
-.ok
+
+.ok2
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -739,6 +802,7 @@ AMPS_Debug_UpdVoiceFM	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -758,13 +822,14 @@ AMPS_Debug_UpdVolFM	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
 	if isAMPS		; check if Vladik's debugger is active
 AMPS_DebugR_UpdVolFM:
-	move.b	cVoice(a1),d4
-	RaiseError2 "FM Volume Update invalid voice: %<.b d4>", AMPS_Debug_Console_Channel
+		move.b	cVoice(a1),d4
+		RaiseError2 "FM Volume Update invalid voice: %<.b d4>", AMPS_Debug_Console_Channel
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -783,6 +848,7 @@ AMPS_Debug_CuePtr	macro id
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -808,11 +874,12 @@ AMPS_Debug_PlayCmd	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker address handlers
+; Sound ID check
 ; ---------------------------------------------------------------------------
 
 AMPS_Debug_SoundID	macro
@@ -824,6 +891,7 @@ AMPS_Debug_SoundID	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 ; ===========================================================================
@@ -844,6 +912,7 @@ AMPS_Debug_PlayTrackMus	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -883,7 +952,6 @@ AMPS_Debug_PlayTrackSFX	macro
 	else
 		bra.w	*
 	endif
-
 .ok
     endm
 
@@ -901,6 +969,7 @@ AMPS_Debug_PlayTrackSFX2	macro
 	else
 		bra.w	*
 	endif
+
 .ok
     endm
 
@@ -986,7 +1055,7 @@ AMPS_DebugR_ChkTracker:
 	endif
 
 AMPS_Debug_CalcMax:
-		moveq	#28,d6	; max lines count
+		moveq	#28,d6		; max lines count
 		moveq	#10-1,d7	; run for 10 chs
 		moveq	#cSize,d5	; prepare size
 		lea	mPSG3.w,a5	; start at PSG3

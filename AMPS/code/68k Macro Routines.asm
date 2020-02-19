@@ -76,12 +76,12 @@ dModPorta	macro jump,loop,type
 dPortamento	macro jump,loop,type
 	if FEATURE_PORTAMENTO
 		if FEATURE_MODULATION=0
-			tst.b	cPortaSpeed(a1)	; check if portamento is active
-			bne.s	.doporta	; if not, branch
+			tst.b	cPortaSpeed(a1)		; check if portamento is active
+			bne.s	.doporta		; if not, branch
 
 			if FEATURE_MODENV
-				tst.b	cModEnv(a1); check if modulation envelope ID is not 0
-				bne.s	.nowrap	; if so, update frequency nonetheless
+				tst.b	cModEnv(a1)	; check if modulation envelope ID is not 0
+				bne.s	.nowrap		; if so, update frequency nonetheless
 			endif
 
 			dGenLoops 1, jump,loop,type
@@ -320,7 +320,11 @@ dProcNote	macro sfx, chan
 
 	if FEATURE_MODULATION|(sfx=0)|(chan=1)
 		btst	#cfbHold,(a1)		; check if we are holding
-		bne.s	.endpn			; if we are, branch
+		if ((chan==0)&(FEATURE_MODTL<>0))
+			bne.w	.endpn		; if we are, branch
+		else
+			bne.s	.endpn		; if we are, branch
+		endif
 	endif
 
 	if sfx=0
@@ -334,6 +338,34 @@ dProcNote	macro sfx, chan
 	if FEATURE_MODENV
 		clr.b	cModEnvPos(a1)		; clear modulation envelope position
 		clr.b	cModEnvSens(a1)		; clear modulation envelope sensitivity (set to 1x)
+	endif
+
+	; handle modulation for each TLmod
+	if ((chan==0)&(FEATURE_MODTL<>0))
+.op :=		0
+		rept 4
+.of :=			toSize*.op
+			if .op=0
+				btst	#0,(a3)		; check if modulation is enabled
+			else
+				btst	#0,.of(a3)	; check if modulation is enabled
+			endif
+			beq.s	.open			; if not, branch
+
+			move.l	toMod+.of(a3),a4	; get modulation data address
+			clr.w	cModFreq+.of(a3)	; clear frequency offset
+			move.b	(a4)+,cModSpeed+.of(a3)	; copy speed
+
+			move.b	(a4)+,d1		; get number of steps
+			lsr.b	#1,d1			; halve it
+			move.b	d1,cModCount+.of(a3)	; save as the current number of steps
+
+			move.b	(a4)+,cModDelay+.of(a3)	; copy delay
+			move.b	(a4)+,cModStep+.of(a3)	; copy step offset
+
+.open
+.op :=			.op+1
+		endm
 	endif
 
 	if FEATURE_MODULATION
@@ -389,6 +421,15 @@ dKeyOnFM	macro x
 		bne.s	.k			; if so, do not note on
 	endif
 
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		beq.s	.nosm			; if not, do normal code
+		jsr	dKeyOffSM(pc)		; run code for enabling FM3 special mode operators
+		bra.s	.k
+
+.nosm
+	endif
+
 		btst	#cfbHold,(a1)		; check if note is held
 		bne.s	.k			; if so, do not note on
 		btst	#cfbRest,(a1)		; check if channel is resting
@@ -403,6 +444,66 @@ dKeyOnFM	macro x
 	startZ80
 
 .k
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Macro for doing keying-on FM3 channels
+;
+; thrash:
+;   d3 - Used for processing FM3 key set
+; ---------------------------------------------------------------------------
+
+	if FEATURE_FM3SM
+dKeySetFM3	macro
+		moveq	#ctFM3,d3		; prepare channel mode to d3
+
+		tst.b	mFM3op1.w		; check if tracker is running
+		bpl.s	.op2			; if not, skip
+		btst	#cfbRest,mFM3op1.w	; check if resting
+		bne.s	.op2			; if yes, skip
+		or.b	#$10,d3			; enable key
+
+.op2
+		tst.b	mFM3op2.w		; check if tracker is running
+		bpl.s	.op3			; if not, skip
+		btst	#cfbRest,mFM3op2.w	; check if resting
+		bne.s	.op3			; if yes, skip
+		or.b	#$20,d3			; enable key
+
+.op3
+		tst.b	mFM3op3.w		; check if tracker is running
+		bpl.s	.op4			; if not, skip
+		btst	#cfbRest,mFM3op3.w	; check if resting
+		bne.s	.op4			; if yes, skip
+		or.b	#$40,d3			; enable key
+
+.op4
+		tst.b	mFM3op4.w		; check if tracker is running
+		bpl.s	.send			; if not, skip
+		btst	#cfbRest,mFM3op4.w	; check if resting
+		bne.s	.send			; if yes, skip
+		or.b	#$80,d3			; enable key
+
+.send
+		and.b	mFM3keyMask.w,d3	; mask the operator keys
+	CheckCue				; check that cue is valid
+	stopZ80
+	WriteYM1	#$28, d3		; Key on: turn appropriate operators on
+	;	st	(a0)			; write end marker
+	startZ80
+    endm
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Macros for enabling and disabling FM3 special mode for YM2616
+; ---------------------------------------------------------------------------
+
+dSetFM3SM	macro value
+	CheckCue				; check that cue is valid
+	stopZ80
+	WriteYM1	#$27, value		; Channel 3 Mode & Timer Control: disable timers and enable channel 3 special mode
+	;	st	(a0)			; write end marker
+	startZ80
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -463,7 +564,6 @@ dStopChannel	macro	stop
 	else
 		jmp	dMuteDACmus(pc)		; mute DAC channel
 	endif
-
 
 .cont
 	if stop<>0

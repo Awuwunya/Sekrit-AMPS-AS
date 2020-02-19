@@ -7,7 +7,7 @@
 	include "code/macro.asm"
 	include "AMPS/code/smps2asm.asm"
 	include "AMPS/code/macro.asm"
-FEATURE_FM3SM = 0
+
 ; ===========================================================================
 	org 0
 StartOfRom:	dc.l Stack, EntryPoint, BusError, AddressError

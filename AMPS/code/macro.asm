@@ -15,16 +15,18 @@
 ; Various assembly flags
 ; ---------------------------------------------------------------------------
 
-FEATURE_SAFE_PSGFREQ =	1	; set to 1 to enable safety checks for PSG frequency. Some S3K SFX require this to be 0
+FEATURE_SAFE_PSGFREQ =	0	; set to 1 to enable safety checks for PSG frequency. Some S3K SFX require this to be 0
 FEATURE_SFX_MASTERVOL =	0	; set to 1 to make SFX use master volumes
 FEATURE_MODULATION =	1	; set to 1 to enable software modulation effect
-FEATURE_PORTAMENTO =	0	; set to 1 to enable portamento flag
-FEATURE_MODENV =	0	; set to 1 to enable modulation envelopes
-FEATURE_DACFMVOLENV =	0	; set to 1 to enable volume envelopes for FM & DAC channels.
-FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
-FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
-FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
+FEATURE_PORTAMENTO =	1	; set to 1 to enable portamento flag
+FEATURE_MODENV =	1	; set to 1 to enable modulation envelopes
+FEATURE_DACFMVOLENV =	1	; set to 1 to enable volume envelopes for FM & DAC channels.
+FEATURE_UNDERWATER =	0	; set to 1 to enable underwater mode
+FEATURE_BACKUP =	0	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
+FEATURE_BACKUPNOSFX =	0	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
+FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
+FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 
 ; Select the tempo algorith.
 ; 0 = Overflow method.
@@ -49,7 +51,7 @@ cData		ds.l 1		; 68k tracker address for the channel
 	if FEATURE_DACFMVOLENV=0
 cEnvPos =	*		; volume envelope position. PSG only
 	endif
-cPanning	ds.b 1		; channel panning and LFO. FM and DAC only
+cPanning	ds.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
 cDetune		ds.b 1		; frequency detune (offset)
 cPitch		ds.b 1		; pitch (transposition) offset
 cVolume		ds.b 1		; channel volume
@@ -123,17 +125,64 @@ cfbVol		ds.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; TL modulation operator configuration
+; ---------------------------------------------------------------------------
+	if FEATURE_MODTL
+	phase 0
+toFlags		ds.b 1		; various TL modulation flags
+toModDelay	ds.b 1		; delay before modulation starts
+toModVol =	*		; modulation volume offset
+toMod		ds.l 1		; modulation data address
+toModSpeed	ds.b 1		; number of frames til next modulation step
+toModStep	ds.b 1		; modulation volume offset per step
+toModCount	ds.b 1		; number of modulation steps until reversal
+toVolEnv	ds.b 1		; tl volume envelope ID
+toEnvPos	ds.b 1		; tl volume envelope position
+toSize =	*		; size of each operator
+toSize4 =	toSize*4	; size of 4 operators in 1
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; TL modulation configuration
+; ---------------------------------------------------------------------------
+
+	phase 0
+tFM1		ds.b toSize4	; data for FM1
+tFM2		ds.b toSize4	; data for FM2
+tFM3		ds.b toSize4	; data for FM3
+tFM4		ds.b toSize4	; data for FM4
+tFM5		ds.b toSize4	; data for FM5
+	if FEATURE_FM6
+tFM6		ds.b cSize	; data for FM6
+	endif
+tSizeMus =	*		; size of all data for music channels
+
+	phase 0
+tSFXFM3		ds.b toSize4	; data for SFX FM3
+tSFXFM4		ds.b toSize4	; data for SFX FM4
+tSFXFM5		ds.b toSize4	; data for SFX FM5
+tSizeSFX =	*		; size of all data
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Misc variables for channel modes
 ; ---------------------------------------------------------------------------
 
 ctbPt2 =	$02		; bit part 2 - FM 4-6
 ctFM1 =		$00		; FM 1
-ctFM2 =		$01		; FM 2
-ctFM3 =		$02		; FM 3	- Valid for SFX
+ctFM2 =		$01		; FM 2	- Valid for SFX
+ctFM3 =		$02		; FM 3
 ctFM4 =		$04		; FM 4	- Valid for SFX
 ctFM5 =		$05		; FM 5	- Valid for SFX
 	if FEATURE_FM6
 ctFM6 =		$06		; FM 6
+	endif
+
+	if FEATURE_FM3SM
+ctbFM3sm =	$03
+ctFM3op1 =	(1<<ctbFM3sm)|$00; FM 3 special mode operator 1
+ctFM3op3 =	(1<<ctbFM3sm)|$01; FM 3 special mode operator 3
+ctFM3op2 =	(1<<ctbFM3sm)|$02; FM 3 special mode operator 2
+ctFM3op4 =	(1<<ctbFM3sm)|$03; FM 3 special mode operator 4
 	endif
 
 ctbDAC =	$04		; DAC bit
@@ -150,7 +199,7 @@ ctPSG4 =	$E0		; PSG 4
 ; ---------------------------------------------------------------------------
 
 Mus_DAC =	2		; number of DAC channels
-Mus_FM =	5+(FEATURE_FM6<>0); number of FM channels (5 or 6)
+Mus_FM =	5+(FEATURE_FM6<>0)+((FEATURE_FM3SM<>0)*3); number of FM channels (5, 6, 8, or 9)
 Mus_PSG =	3		; number of PSG channels
 Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG; total number of music channels
 SFX_DAC =	1		; number of DAC SFX channels
@@ -160,9 +209,12 @@ SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG; total number of SFX channels
 
 VoiceRegs =	29		; total number of registers inside of a voice
 VoiceTL =	VoiceRegs-4	; location of voice TL levels
+	if FEATURE_FM3SM
+VoiceRegsSM =	8		; total number of registers to write for FM3 Special Mode voice
+	endif
 
 MaxPitch =	$1000		; this is the maximum pitch Dual PCM is capable of processing
-Z80E_Read =	$00018		; this is used by Dual PCM internally but we need this for macros
+Z80E_Read =	$0018		; this is used by Dual PCM internally but we need this for macros
 
 ; NOTE: There is no magic trick to making Dual PCM play samples at higher rates.
 ; These values are only here to allow you to give lower pitch samples higher
@@ -209,12 +261,31 @@ mLastCue	ds.b 1		; last YM Cue the sound driver was accessing
 		ds.b 1		; even's are broke in 64-bit values?
 	endif			; align channel data
 
+	if FEATURE_MODTL
+mTLSFX		ds.b tSizeSFX	; TL modulation data
+	endif
+
 mBackUpArea =	*		; this is where backup stuff starts
+	if FEATURE_MODTL
+mTL		ds.b tSizeMus	; TL modulation data
+	endif
 mDAC1		ds.b cSize	; DAC 1 data
 mDAC2		ds.b cSize	; DAC 2 data
 mFM1		ds.b cSize	; FM 1 data
 mFM2		ds.b cSize	; FM 2 data
+
+	if FEATURE_FM3SM
+mFM3 =		*		; FM 3 data
+mFM3op1		ds.b cSize	; FM3 special mode operator 1 data
+mFM3op3		ds.b cSize	; FM3 special mode operator 3 data
+mFM3keyMask =	mFM3op3+cPanning; FM3 key enable mask. Used for CSM mode
+mFM3op2		ds.b cSize	; FM3 special mode operator 2 data
+mStatFM3 =	mFM3op2+cPanning; FM3 enable register status. Also used to control Timer A
+mFM3op4		ds.b cSize	; FM3 special mode operator 4 data
+	else
 mFM3		ds.b cSize	; FM 3 data
+	endif
+
 mFM4		ds.b cSize	; FM 4 data
 mFM5		ds.b cSize	; FM 5 data
 	if FEATURE_FM6
@@ -234,11 +305,24 @@ mChannelEnd =	*		; used to determine where channel RAM ends
 
 	if FEATURE_BACKUP
 mBackUpLoc =	*		; this is where backup stuff is loaded
+	if FEATURE_MODTL
+mBackTL		ds.b tSizeMus	; back-up for TL modulation data
+	endif
 mBackDAC1	ds.b cSize	; back-up DAC 1 data
 mBackDAC2	ds.b cSize	; back-up DAC 2 data
 mBackFM1	ds.b cSize	; back-up FM 1 data
 mBackFM2	ds.b cSize	; back-up FM 2 data
+
+	if FEATURE_FM3SM
+mBackFM3 =	*		; back-up FM 3 data
+mBackFM3op1	ds.b cSize	; back-up FM3 special mode operator 1 data
+mBackFM3op3	ds.b cSize	; back-up FM3 special mode operator 3 data
+mBackFM3op2	ds.b cSize	; back-up FM3 special mode operator 2 data
+mBackFM3op4	ds.b cSize	; back-up FM3 special mode operator 4 data
+	else
 mBackFM3	ds.b cSize	; back-up FM 3 data
+	endif
+
 mBackFM4	ds.b cSize	; back-up FM 4 data
 mBackFM5	ds.b cSize	; back-up FM 5 data
 	if FEATURE_FM6
@@ -364,7 +448,7 @@ mvacc		macro derp, bits
 	if "bits"<>""			; repeat for all bits
 .res :=		.res|(1<<bits)		; or the value of the bit
 		shift
-		mvacc ALLARGS		; call this again with new args
+		mvacc	ALLARGS		; call this again with new args
 	endif
     endm
 ; ===========================================================================
@@ -377,12 +461,12 @@ mvacc		macro derp, bits
 ;   block - Size of clear block
 ;
 ; thrashes:
-;   d6 - Set to $0000FFFF
+;   d6 - Set to $xxxxFFFF
 ;   a4 - Destination address
 ; ---------------------------------------------------------------------------
 
 dCLEAR_MEM	macro len, block
-		move.w	#((len)/(block))-1,d6; load repeat count to d6
+		move.w	#((len)/(block))-1,d6; load repeat count to d7
 .loop
 	rept (block)/4
 		clr.l	(a4)+		; clear driver and music channel memory
@@ -409,7 +493,7 @@ dREAD_WORD	macro areg, dreg
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Used to calculate the address of the right FM voice
+; used to calculate the address of the right FM voice
 ;
 ; input:
 ;   d4 - Voice ID
@@ -426,7 +510,7 @@ dCALC_VOICE	macro off
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Used to calculate the address of the right FM voice bank
+; used to calculate the address of the right FM voice bank
 ;
 ; input:
 ;   a1 - Channel address
@@ -581,20 +665,11 @@ __menv :=	__menv+1		; increase ID
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Fixing some weird-ass AS bugs here :(
-; ---------------------------------------------------------------------------
-
-fuckingincludeit macro {INTLABEL}, file
-__LABEL__	label *
-		include file
-    endm
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Include PCM data
 ; ---------------------------------------------------------------------------
 
 incSWF		macro file
-	if "file"<>""			; repeat for all arguments
+	if "file"<>""			; repeate for all arguments
 SWF_file	equ *
 		binclude "AMPS/DAC/incswf/file.swf"; include PCM data
 SWFR_file	equ *
@@ -610,13 +685,13 @@ SWFR_file	equ *
 ; ---------------------------------------------------------------------------
 
 sample		macro freq, start, loop, name
-	if "name"<>""			; if we have 4 arguments, we'd like a custom name
-d{"name"} =	__samp			; use the extra argument to create SMPS2ASM equate
+	if "name"<>""		; if we have 4 arguments, we'd like a custom name
+d{"name"} =	__samp		; use the extra argument to create SMPS2ASM equate
 	else
-d{"start"} =	__samp			; else, use the first one!
+d{"start"} =	__samp		; else, use the first one!
 	endif
 
-__samp :=	__samp+1		; increase sample ID
+__samp :=	__samp+1	; increase sample ID
 
 ; create offsets for the sample normal, reverse, loop normal, loop reverse.
 	if ("start"="Stop")|("start"="STOP")|("start"="stop")
@@ -633,8 +708,8 @@ __samp :=	__samp+1		; increase sample ID
 		dc.b (SWFR_loop-1)&$FF,(((SWFR_loop-1)>>$08)&$7F)|$80,((SWFR_loop-1)>>$0F)&$FF
 	endif
 
-	dc.w freq-$100			; sample frequency (actually offset, so we remove $100)
-	dc.w 0				; unused!
+	dc.w freq-$100		; sample frequency (actually offset, so we remove $100)
+	dc.w 0			; unused!
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------

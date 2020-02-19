@@ -150,6 +150,7 @@ dSetFilter:
 		addx.b	d5,d6			; add instruction and carry into d3
 		move.b	d6,(a4)+		; save instruction into Z80 memory
 	endm
+
 	StartZ80				; enable Z80 execution
 
 locret_SetFilter:
@@ -189,9 +190,9 @@ UpdateAMPS:
 		moveq	#4-1,d1			; check Dual PCM status max 4 times
 
 .recheck
-	stopZ80					; wait for Z80 to stop
+	StopZ80					; wait for Z80 to stop
 		move.b	dZ80+YM_Buffer.l,d0	; load current cue buffer in use
-	startZ80				; enable Z80 execution
+	StartZ80				; enable Z80 execution
 
 		cmp.b	mLastCue.w,d0		; check if last queue was the same
 		bne.s	.bufferok		; if it is same, Dual PCM is delayed and its baaad =(
@@ -199,7 +200,7 @@ UpdateAMPS:
 		moveq	#$20-1,d0		; loop for $20 times
 		dbf	d0,*			; in place, to wait for Dual PCM maybe! =I
 		dbf	d1,.recheck		; if we still have cycles to check, do it
-		bclr	#mfbExec,mFlags.w	; set AMPS as finished running
+		bclr	#mfbExec,mFlags.w	; set AMPS as not running
 
 .rts
 		rts				; fuck it, Dual PCM does not want to cooperate
@@ -213,15 +214,14 @@ UpdateAMPS:
 
 .gotbuffer
 		bsr.w	dUpdateAllAMPS		; process the driver
-
 	if safe=1				; this must always happen at the end
 		AMPS_Debug_CuePtr 3		; check if the cue is still valid
 	endif
 
-	stopZ80					; wait for Z80 to stop
+	StopZ80					; wait for Z80 to stop
 		st	(a0)			; make sure cue is marked as completed
-	startZ80				; enable Z80 execution
-		bclr	#mfbExec,mFlags.w	; set AMPS as finished running
+	StartZ80				; enable Z80 execution
+		bclr	#mfbExec,mFlags.w	; set AMPS as not running
 
 dPaused:
 		rts
@@ -323,7 +323,8 @@ dUpdateAllAMPS:
 ; play at the exact right speed, instead of slightly too slow.
 ; ---------------------------------------------------------------------------
 
-.chkregion	btst	#6,ConsoleRegion.w	; is this PAL system?
+.chkregion
+		btst	#6,ConsoleRegion.w	; is this PAL system?
 		beq.s	.driver			; if not, branch
 		subq.b	#1,mCtrPal.w		; decrease PAL frame counter
 		bgt.s	.driver			; if hasn't become 0 (or lower!), branch
@@ -334,6 +335,7 @@ dUpdateAllAMPS:
 
 .nofix
 		move.b	#6-1,mCtrPal.w		; reset counter
+
 .driver
 	; continue to run sound driver again
 ; ---------------------------------------------------------------------------
@@ -348,7 +350,7 @@ dUpdateAllAMPS:
 ; the tempo, but at high ranges it gets worse. Meanwhile the counter
 ; method isn't as good for small values, but for large value it works
 ; better. You may choose this setting in the macro.asm file,
-; --------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 	if TEMPO_ALGORITHM		; Counter method
 		subq.b	#1,mTempoCur.w		; sub 1 from counter

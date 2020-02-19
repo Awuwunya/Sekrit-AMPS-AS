@@ -1,4 +1,4 @@
-; =; ===========================================================================
+; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Routine for running modulation envelope programs
 ;
@@ -104,6 +104,7 @@ dModEnvCommand:
 .stop
 		bset	#cfbRest,(a1)		; set channel resting bit
 	dStopChannel	1			; stop channel operation
+; ---------------------------------------------------------------------------
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -199,3 +200,132 @@ dEnvCommand:
 	dStopChannel	0			; stop channel operation
 		moveq	#0,d4			; set Z flag to 1
 		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Routine for running TL envelope programs
+;
+; input:
+;   a1 - Channel to operate on
+;   a3 - Address to TL modulation data for this operator
+;   d5 - Input volume
+; output:
+;   d5 - Output volume
+; thrash:
+;   a2 - Used for envelope data address
+;   d4 - Used for envelope calculations, other various uses
+; ---------------------------------------------------------------------------
+
+	if FEATURE_MODTL
+ModulateTL:
+		tst.b	(a3)			; check if modulation or volume envelope is in progress
+		bpl.s	ModulateTL3		; branch if none active
+
+		btst	#0,toFlags(a3)		; check if modulation is enabled
+		beq.s	.env			; if not, branch
+		beq.s	.started		; if not, modulate!
+		tst.b	toModDelay(a3)		; check if there is delay left
+		beq.s	.started		; if not, modulate!
+		subq.b	#1,toModDelay(a3)	; decrease delay
+		bra.s	.env
+
+.started
+		subq.b	#1,toModSpeed(a3)	; decrease modulation speed counter
+		bne.s	.env			; if there's still delay left, update vol and return
+		movea.l	toMod(a3),a2		; get modulation data offset to a1
+		move.b	(a2)+,toModSpeed(a3)	; reset modulation speed counter
+
+		tst.b	toModCount(a3)		; check if this was the last step
+		bne.s	.norev			; if was not, do not reverse
+		move.b	(a2)+,toModCount(a3)	; reset steps counter
+		neg.b	toModStep(a3)		; negate step amount
+
+.norev
+		subq.b	#1,toModCount(a3)	; decrease step counter
+		move.b	toModStep(a3),d4	; get step offset into d5
+
+		add.b	d4,toModVol(a3)		; add it to modulation volume
+		add.b	toModVol(a3),d5		; add to channel base volume
+
+.env
+		moveq	#0,d4
+		move.b	toVolEnv(a3),d4		; load volume envelope ID to d4
+		beq.s	ModulateTL3		; if 0, no volume update is necessary
+
+	if safe=1
+		AMPS_Debug_VolEnvID		; check if volume envelope ID is valid
+	endif
+
+		lea	VolEnvs-4(pc),a2	; load volume envelope data array
+		add.w	d4,d4			; quadruple volume envelope ID
+		add.w	d4,d4			; (each entry is 4 bytes in size)
+		move.l	(a2,d4.w),a2		; get pointer to volume envelope data
+
+		moveq	#0,d4
+
+ModulateTL2:
+		move.b	toEnvPos(a3),d4		; get envelope position to d4
+		move.b	(a2,d4.w),d4		; get the data in that position
+		bpl.s	.value			; if positive, its a normal value
+
+		cmp.b	#eLast-2,d4		; check if this is a command
+		ble.s	dEnvCommandTL		; if it is handle it
+
+.value
+		addq.b	#1,toEnvPos(a3)		; increment envelope position
+		add.b	d4,d5			; add envelope volume to d5
+
+ModulateTL3:
+		tst.b	d5			; check volume
+		bpl.s	.nocap			; if positive, branch
+		cmp.b	#$C0,d5			; check the middle point of the volume
+		sls	d5			; if < $C0, set to $FF, otherwise 0
+
+.nocap
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Subroutine for handling volume envelope commands
+; ---------------------------------------------------------------------------
+
+dEnvCommandTL:
+	if safe=1
+		AMPS_Debug_VolEnvCmd		; check if command is valid
+	endif
+
+.bich =		.comm-$80			; damn it AS
+		jmp	.bich(pc,d4.w)		; jump to command handler
+
+.comm
+		bra.s	.reset			; 80 - Loop back to beginning
+		bra.s	.hold			; 82 - Hold the envelope at current level
+		bra.s	.loop			; 84 - Go to position defined by the next byte
+		bra.s	.stop			; 86 - Stop current note and envelope
+		bra.s	.ignore			; 88 - ignore
+		bra.s	.ignore			; 8A - ignore
+; ---------------------------------------------------------------------------
+
+.hold
+		subq.b	#1,toEnvPos(a3)		; decrease envelope position
+		jmp	ModulateTL2(pc)		; update the volume correctly
+; ---------------------------------------------------------------------------
+
+.reset
+		clr.b	toEnvPos(a3)		; set envelope position to 0
+		jmp	ModulateTL2(pc)		; run the program again
+; ---------------------------------------------------------------------------
+
+.loop
+		move.b	toEnvPos(a3),d4		; get envelope position to d4
+		move.b	1(a2,d4.w),toEnvPos(a3)	; set envelope position to the next byte
+		jmp	ModulateTL2(pc)		; run the program again
+; ---------------------------------------------------------------------------
+
+.ignore
+		addq.b	#2,toEnvPos(a3)		; skip the command and the next byte
+		jmp	ModulateTL2(pc)		; run the program again
+; ---------------------------------------------------------------------------
+
+.stop
+		moveq	#$7F,d5			; set volume to $7F
+		rts
+	endif

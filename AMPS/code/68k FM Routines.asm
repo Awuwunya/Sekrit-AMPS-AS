@@ -60,13 +60,15 @@ locret_MuteFM:
 ;
 ; input:
 ;   a1 - Channel to operate on
+;   a3 - Address to TL modulation data
 ; thrash:
-;   a2 - Used maybe for modulation envelopes
+;   a2 - Used maybe for TL modulation
 ;   a4 - Used for envelope data address
 ;   a5 - Used to store stack location
 ;   d1 - Used for volume calculations
+;   d2 - Used to store the right TL modulation address
 ;   d3 - Used as a loop counter for TL's
-;   d4 - Various uses
+;   d4 - Used (maybe) for envelope calculations, other various uses
 ;   d5 - Used for TL calculations
 ;   d6 - Used for modulator offset
 ; ---------------------------------------------------------------------------
@@ -90,8 +92,10 @@ dUpdateVolFM:
 
 		move.b	cVolume(a1),d1		; load FM channel volume to d1
 		add.b	mMasterVolFM.w,d1	; add master FM volume to d1
+	if FEATURE_MODTL=0
 		bpl.s	dUpdateVolFM3		; if we did not overflow, branch
 		moveq	#$7F,d1			; cap to silent volume
+	endif
 
 dUpdateVolFM3:
 	if FEATURE_DACFMVOLENV
@@ -120,7 +124,7 @@ dUpdateVolFM2:
 	dCALC_VOICE				; get address of the specific voice to a4
 
 	if FEATURE_UNDERWATER
-		moveq	#0,d6			; clear d6 (so no underwater by default)
+		clr.w	d6			; clear d6 (so no underwater by default)
 
 		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
@@ -133,24 +137,41 @@ dUpdateVolFM2:
 		and.w	#7,d4			; mask out extra stuff
 
 		add.b	d4,d1			; add algorithm to Total Level carrier offset
+	if FEATURE_MODTL=0
 		bpl.s	.uwdone			; if we did not overflow, branch
 		moveq	#$7F,d1			; cap to silent volume
+	endif
 
 .uwdone
+	endif
+
+		add.w	#VoiceTL,a4		; go to the Total Level offset of the voice
+	if FEATURE_MODTL
+		move.w	a3,d2			; save the TL data to d2
+	endif
+
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		bne.w	.dosm			; if yes, do special code
 	endif
 
 		moveq	#4-1,d3			; prepare 4 operators to d3
 		move.l	sp,a5			; copy stack pointer to a5
 		subq.l	#4,sp			; reserve some space in the stack
-		add.w	#VoiceTL,a4		; go to the Total Level offset of the voice
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
+	if FEATURE_MODTL
+		and.w	#$7F,d5			; get rid of sign bit (ugh)
+		add.b	d1,d5			; add carrier offset to loaded value
+	else
 		add.b	d1,d5			; add carrier offset to loaded value
 		bmi.s	.slot			; if we did not overflow, branch
 		moveq	#-1,d5			; cap to silent volume
+	endif
+
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
@@ -161,6 +182,10 @@ dUpdateVolFM2:
 	endif
 
 .slot
+	if FEATURE_MODTL
+		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		add.w	#toSize,a3		; go to next operator
+	endif
 		move.b	d5,-(a5)		; write total level to stack
 		dbf	d3,.tlloop		; repeat for each Total Level operator
 
@@ -175,13 +200,85 @@ dUpdateVolFM2:
 	startZ80
 
 		move.l	a5,sp			; restore stack pointer
+	if FEATURE_MODTL
+		move.w	d2,a3			; load TL data back from d2
+	endif
 
 	if safe=1
 		AMPS_Debug_UpdVolFM		; check if the voice was valid
 	endif
+		rts
+; ---------------------------------------------------------------------------
+
+	if FEATURE_FM3SM
+.dosm
+		move.b	cType(a1),d3		; get type bits to d3
+		and.w	#3,d3			; only get the op id
+		add.w	d3,a4			; get the appropriate TL byte
+
+		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		bpl.s	.smnoslot		; if slot operator bit was not set, branch
+
+	if FEATURE_MODTL
+		and.w	#$7F,d5			; get rid of sign bit (ugh)
+		add.b	d1,d5			; add carrier offset to loaded value
+	else
+		add.b	d1,d5			; add carrier offset to loaded value
+		bmi.s	.smslot			; if we did not overflow, branch
+		moveq	#-1,d5			; cap to silent volume
+	endif
+	if FEATURE_UNDERWATER
+		bra.s	.smslot
+	endif
+
+.smnoslot
+	if FEATURE_UNDERWATER
+		add.b	d6,d5			; add modulator offset to loaded value
+	endif
+
+.smslot
+	if FEATURE_MODTL
+		move.w	d3,d4			; copy value to d4
+		add.w	d4,d4			; double offset
+		move.w	dModTLFM3(pc,d4.w),a3	; load the RAM address to use
+		jsr	ModulateTL(pc)		; do TL modulation on this channel
+	endif
+
+	CheckCue				; check that YM cue is valid
+	stopZ80
+	WriteYM1	dOpTLFM3(pc,d3.w), d5	; Total Level: Load correct operator
+	;	st	(a0)			; write end marker
+	startZ80
+
+	if FEATURE_MODTL
+		move.w	d2,a3			; load TL data back from d2
+	endif
+
+	if safe=1
+		eor.w	#3,d3			; invert slot num
+		add.w	d3,a4			; go to end of voice
+		AMPS_Debug_UpdVolFM		; check if the voice was valid
+	endif
+	endif
 
 locret_VolFM:
 		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; RAM addresses for FM3 TL modulation
+; ---------------------------------------------------------------------------
+	if FEATURE_MODTL
+dModTLFM3:	dc.w mTL+tFM3, mTL+tFM3+toSize
+		dc.w mTL+tFM3+(toSize*2), mTL+tFM3+(toSize*3)
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; YM2612 register update list
+; ---------------------------------------------------------------------------
+
+dOpTLFM3:	dc.b $42, $4A, $46, $4E		; Total Level for FM3 operators
+dOpTLFM:	dc.b $40, $48, $44, $4C		; Total Level
+dAMSEn_Ops:	dc.b $60, $68, $64, $6C		; Decay 1 Rate
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; values for underwater mode update
@@ -192,19 +289,19 @@ dUnderwaterTbl:	dc.b $08, $08, $08, $08, $0A, $0E, $0E, $0F
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; YM2612 register update list
-; ---------------------------------------------------------------------------
-
-dOpTLFM:	dc.b $40, $48, $44, $4C		; Total Level
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Process SFX FM channels
 ; ---------------------------------------------------------------------------
 
 dAMPSdoFMSFX:
+	if FEATURE_MODTL
+		lea	mTLSFX-toSize4.w,a3	; load SFX FM3 TL modulation data to a3
+	endif
 		moveq	#SFX_FM-1,d0		; get total number of SFX FM channels to d0
 
 dAMPSnextFMSFX:
+	if FEATURE_MODTL
+		add.w	#toSize4,a3		; go to the TL data
+	endif
 		add.w	#cSizeSFX,a1		; go to the next channel
 
 		tst.b	(a1)			; check if channel is running a tracker
@@ -263,9 +360,26 @@ dAMPSnextFMSFX:
 
 dAMPSdoFM:
 		moveq	#Mus_FM-1,d0		; get total number of music FM channels to d0
+	if FEATURE_MODTL
+		lea	mTL-toSize4.w,a3	; load FM1 TL modulation data to a3
+	endif
 
 dAMPSnextFM:
 		add.w	#cSize,a1		; go to the next channel
+	if FEATURE_MODTL
+		if FEATURE_FM3SM		; TODO: Terrible code ahead! =(
+			cmp.w	#mFM3op3,a1	; check if this is FM3 op3 or greater
+			ble.s	.doadd		; if not, branch
+			cmp.w	#mFM4,a1	; check if this is FM4 or greater
+			ble.s	.dontadd	; if not, skip
+
+.doadd
+		endif
+
+		add.w	#toSize4,a3		; go to the TL data
+.dontadd
+	endif
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -355,17 +469,41 @@ dUpdateFreqFM:
 
 dUpdateFreqFM2:
 		btst	#cfbInt,(a1)		; is the channel interrupted by SFX?
-		bne.s	locret_UpdFreqFM	; if is, do not update frequency anyway
+		bne.w	locret_UpdFreqFM	; if is, do not update frequency anyway
 
 dUpdateFreqFM3:
 		btst	#cfbRest,(a1)		; is this channel resting
+	if FEATURE_FM3SM
+		bne.s	.rts			; if is, skip
+	else
 		bne.s	locret_UpdFreqFM	; if is, skip
+	endif
 
 		move.w	d2,d3			; copy frequency to d1
 		lsr.w	#8,d3			; shift upper byte into lower byte
 	CheckCue				; check that YM cue is valid
-	InitChYM				; prepare to write to channel
 
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		beq.s	.nosm			; if not, proceed normally
+		move.b	cType(a1),d4		; load chanel type to d2
+		and.w	#3,d4			; get only operator
+
+	stopZ80
+	WriteYM1	.smfreqm(pc,d4.w), d3	; Frequency MSB & Octave
+	WriteYM1	.smfreql(pc,d4.w), d2	; Frequency LSB
+	;	st	(a0)			; write end marker
+	startZ80
+
+.rts
+		rts
+
+.smfreql	dc.b $A2, $A9, $A8, $AA		; registers for FM3 frequency MSB
+.smfreqm	dc.b $A6, $AD, $AC, $AE		; registers for FM3 frequency LSB
+	endif
+
+.nosm
+	InitChYM				; prepare to write to channel
 	stopZ80
 	WriteChYM	#$A4, d3		; Frequency MSB & Octave
 	WriteChYM	#$A0, d2		; Frequency LSB
@@ -418,9 +556,19 @@ locret_GetFreqFM:
 
 dKeyOffFM:
 		btst	#cfbInt,(a1)		; check if overridden by sfx
-		bne.s	locret_UpdFreqFM	; if so, do not note off
+		bne.s	locret_GetFreqFM	; if so, do not note off
 
 dKeyOffFM2:
+	if FEATURE_FM3SM
+		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?
+		beq.w	dKeyOffFM3		; if not, do normal code
+
+dKeyOffSM:
+	dKeySetFM3				; run code for enabling FM3 special mode operators
+		rts
+
+dKeyOffFM3:
+	endif
 		btst	#cfbHold,(a1)		; check if note is held
 		bne.s	.rts			; if so, do not note off
 		move.b	cType(a1),d3		; load channel type value to d3
@@ -452,9 +600,8 @@ dFreqFM:dc.w								       $025E; Octave-1 - (80)
 	dc.w $3284,$32AB,$32D3,$32FE,$332D,$335C,$338F,$33C5,$33FF,$343C,$347C,$3A5E; Octave 6 - (c9 - D4)
 	dc.w $3A84,$3AAB,$3AD3,$3AFE,$3B2D,$3B5C,$3B8F,$3BC5,$3BFF,$3C3C,$3C7C	    ; Octave 7 - (D5 - DF)
 dFreqFM_:
-
 	if safe=1				; in safe mode, we have extra debug data
-.x := $100|((dFreqFM_-dFreqFM)/2)		; to check if we played an invalid note
+.x :=		$100|((dFreqFM_-dFreqFM)/2)	; to check if we played an invalid note
 		rept $80-((dFreqFM_-dFreqFM)/2)	; and if so, tell us which note it was
 			dc.w .x
 .x :=			.x+$101

@@ -4,7 +4,7 @@
 ; make it easier to debug built ROMS! If you would like easier
 ; assistance from Natsumi, please keep this section intact!
 ; ---------------------------------------------------------------------------
-	dc.b "AMPS-v1.1"		; ident str
+	dc.b "AMPS-x1.1"		; ident str
 
 	if safe
 		dc.b "s"		; safe mode enabled
@@ -45,6 +45,13 @@
 		dc.b "BA"		; backup enabled
 	endif
 
+	if FEATURE_MODTL
+		dc.b "MT"		; TL modulation
+	endif
+
+	if FEATURE_FM3SM
+		dc.b "S3"		; FM3 special mode
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Define music and SFX

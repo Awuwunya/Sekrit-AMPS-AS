@@ -32,7 +32,6 @@ sHeaderInitSFX	macro
 
 ; Header - Set up Channel Usage
 sHeaderCh	macro fm,psg
-
 	if "psg"<>""
 		dc.b psg-1, fm-1
 		if fm>(5+(FEATURE_FM6<>0))
@@ -91,15 +90,6 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 	dc.w loc-*
 	dc.b (pitch)&$FF,(vol)&$FF
     endm
-; ---------------------------------------------------------------------------------------------
-; Command Flag Macros and Equates. Based on the original s1smps2asm, and Flamewing's smps2asm
-; ---------------------------------------------------------------------------------------------
-
-spNone =	$00
-spRight =	$40
-spLeft =	$80
-spCentre =	$C0
-spCenter =	$C0
 ; ---------------------------------------------------------------------------------------------
 ; Macros for FM instruments
 ; Patches - Feedback
@@ -258,6 +248,15 @@ spTL4 :=	op4
 	endif
     endm
 ; ---------------------------------------------------------------------------------------------
+; Command Flag Macros and Equates. Based on the original s1smps2asm, and Flamewing's smps2asm
+; ---------------------------------------------------------------------------------------------
+
+spNone =	$00
+spRight =	$40
+spLeft =	$80
+spCentre =	$C0
+spCenter =	$C0
+; ---------------------------------------------------------------------------------------------
 ; tracker commands
 ; ---------------------------------------------------------------------------------------------
 
@@ -405,12 +404,6 @@ sModOff		macro
 	dc.b $FF,$04
     endm
 
-; F4xxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
-sCont		macro loc
-	dc.b $F4
-	dc.w loc-*-2
-    endm
-
 ; F5 - End of channel (TRK_END - TEND_STD)
 sStop		macro
 	dc.b $F5
@@ -460,8 +453,8 @@ sCondOff	macro
     endm
 
 ; FDxx - Stop note after xx frames (NOTE_STOP - NSTOP_NORMAL)
-sGate		macro val
-	dc.b $FD, val
+sGate		macro frames
+	dc.b $FD, frames
     endm
 
 ; FExxyy - YM command yy on register xx (YMCMD)
@@ -500,22 +493,23 @@ sPlayMus	macro id
 	dc.b $FF,$24, id
     endm
 
-; FF28 - Enable raw frequency mode (RAW_FREQ)
-sFreqOn		macro freq
-	dc.b $FF,$28
-	fatal "Flag is currently not implemented! Please remove."
-    endm
-
-; FF2C - Disable raw frequency mode (RAW_FREQ - RAW_FREQ_OFF)
-sFreqOff	macro freq
+; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
+sCont		macro loc
 	dc.b $FF,$2C
-	fatal "Flag is currently not implemented! Please remove."
+	dc.w loc-*-2
     endm
 
-; FF30 - Enable FM3 special mode (SPC_FM3)
-sSpecFM3	macro freq
+; FF30xxxxyyyyzzzz - Enable FM3 special mode (SPC_FM3)
+sSpecFM3	macro op2, op3, op4
 	dc.b $FF,$30
-	fatal "Flag is currently not implemented! Please remove."
+
+	if "op2"==""
+		dc.w 0
+	else
+		dc.w op3-*-2
+		dc.w op2-*-2
+		dc.w op4-*-2
+	endif
     endm
 
 ; FF34xx - Set DAC filter bank address (DAC_FILTER)
@@ -533,17 +527,110 @@ sNoisePSG	macro mode
 	dc.b $FF,$3C, mode
     endm
 
-; FF40 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
+; FF40yxxx - Enable CSM mode for specific operators y, and set timer a value to x (SPC_FM3 - CSM_ON)
+sCSMOn		macro ops, timera
+	dc.b $FF,$40, (ops&$F0)|(timera&$03), timera>>2
+    endm
+
+; FF44yy - Disable CSM mode and set register mask y (SPC_FM3 - CSM_OFF)
+sCSMOff		macro ops
+	dc.b $FF,$44, (ops&$F0)|ctFM3
+    endm
+
+; F4xx -  Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
+;  xx: lower 4 bits indicate what operators to apply to (reversed), and higher 4 bits are the operation:
+;    %0000: Setup modulation and reset volume envelope
+;    %0001: Setup modulation
+;    %0010: Setup volume envelope
+;    %0011: Setup modulation and volume envelope
+;    %0100: Disable modulation
+;    %0101: Enable modulation
+;    %0110: Disable modulation and reset volume envelope
+;    %0111: Enable modulation and reset volume envelope
+;    %1000; Setup volume envelope and disable modulation
+;    %1001; Setup volume envelope and enable modulation
+sComplexTL	macro val1, val2, val3, val4
+	dc.b $F4, val1
+.mode =		val1
+.mask =		1
+		shift
+
+; NAT: Here is some fun code to setup parameters
+	rept 4
+		if .mode&.mask
+			; if this channel is enabled, figure out what to do
+			switch .mode&$F0
+				case $00
+.flags =				1	; modulation only
+				case $10
+.flags =				1	; modulation only
+				case $20
+.flags =				2	; envelope only
+				case $30
+.flags =				3	; envelope + modulation
+				case $80
+.flags =				2	; envelope only
+				case $90
+.flags =				2	; envelope only
+				elsecase
+.flags =				0	; nothing
+			endcase
+
+			if .flags&2	; check if we need to do volume envelope
+				dc.b val1
+				shift
+			endif
+
+			if .flags&1	; check if we need to do modulation
+				sModData val1, val2, val3, val4
+				shift
+				shift
+				shift
+				shift
+			endif
+		endif
+
+.mask =		.mask>>1		; get the next bit to check
+	endm
+    endm
+
+; FF5x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
+sModOnTL	macro op
+	dc.b $FF, $50|((op-1)*4)
+    endm
+
+; FF6x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
+sModOffTL	macro op
+	dc.b $FF, $60|((op-1)*4)
+    endm
+
+; FF7uwwxxyyzz - TL Modulation for operator u
+;  ww: wait time
+;  xx: modulation speed
+;  yy: change per step
+;  zz: number of steps
+; (TL_MOD - MOD_SETUP)
+ssModTL		macro op, wait, speed, step, count
+	dc.b $FF, $70|((op-1)*4)
+	sModData	\wait,\speed,\step,\count
+    endm
+
+; FF8yxx - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
+sVolEnvTL	macro val
+	dc.b $FF, $80|((op-1)*4), \val
+    endm
+
+; FF80 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
 sFreeze		macro
 	if safe=1
-		dc.b $FF,$40
+		dc.b $FF,$84
 	endif
     endm
 
-; FF44 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+; FF84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 sCheck		macro
 	if safe=1
-		dc.b $FF,$44
+		dc.b $FF,$88
 	endif
     endm
 ; ---------------------------------------------------------------------------------------------
