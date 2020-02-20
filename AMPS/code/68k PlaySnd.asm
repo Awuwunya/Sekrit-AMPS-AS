@@ -472,6 +472,9 @@ dFMtypeVals:	dc.b ctFM1, ctFM2, ctFM3, ctFM4, ctFM5
 		dc.b ctFM6
 	endif
 dPSGtypeVals:	dc.b ctPSG1, ctPSG2, ctPSG3
+	if FEATURE_PSG4
+		dc.b ctPSG4
+	endif
 		even
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -710,23 +713,31 @@ dPlaySnd_SFX:
 ; pointers for music channels SFX can override and addresses of SFX channels
 ; ---------------------------------------------------------------------------
 
-dSFXoffList:	dc.w mSFXFM3			; FM3
-		dc.w mSFXDAC1			; DAC1
-		dc.w mSFXFM4			; FM4
-		dc.w mSFXFM5			; FM5
-		dc.w mSFXPSG1			; PSG1
-		dc.w mSFXPSG2			; PSG2
-		dc.w mSFXPSG3			; PSG3
-		dc.w mSFXPSG3			; PSG4
+dSFXoffList:	dc.w mSFXFM3			; SFX FM3
+		dc.w mSFXDAC1			; SFX DAC1
+		dc.w mSFXFM4			; SFX FM4
+		dc.w mSFXFM5			; SFX FM5
+		dc.w mSFXPSG1			; SFX PSG1
+		dc.w mSFXPSG2			; SFX PSG2
+		dc.w mSFXPSG3			; SFX PSG3
+	if FEATURE_PSG4
+		dc.w mSFXPSG4			; SFX PSG4
+	else
+		dc.w mSFXPSG3			; SFX PSG4
+	endif
 
-dSFXoverList:	dc.w mFM3			; SFX FM3
-		dc.w mDAC1			; SFX DAC1
-		dc.w mFM4			; SFX FM4
-		dc.w mFM5			; SFX FM5
-		dc.w mPSG1			; SFX PSG1
-		dc.w mPSG2			; SFX PSG2
-		dc.w mPSG3			; SFX PSG3
-		dc.w mPSG3			; SFX PSG4
+dSFXoverList:	dc.w mFM3			; FM3
+		dc.w mDAC1			; DAC1
+		dc.w mFM4			; FM4
+		dc.w mFM5			; FM5
+		dc.w mPSG1			; PSG1
+		dc.w mPSG2			; PSG2
+		dc.w mPSG3			; PSG3
+	if FEATURE_PSG4
+		dc.w mPSG4			; PSG4
+	else
+		dc.w mPSG3			; PSG4
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Play queued command
@@ -776,7 +787,7 @@ dFadeCommands:
 ; ---------------------------------------------------------------------------
 
 dPlaySnd_StopSFX:
-		moveq	#SFX_Ch,d0		; load num of SFX channels to d0
+		moveq	#SFX_Ch-1,d0		; load num of SFX channels to d0
 		lea	mSFXDAC1.w,a1		; start from SFX DAC 1
 
 .loop
@@ -883,21 +894,6 @@ dUpdateVolumeAll:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Enable speed shoes mode
-; ---------------------------------------------------------------------------
-
-dPlaySnd_ShoesOn:
-		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
-		move.b	mTempoSpeed.w,mTempoCur.w; set tempo accumulator/counter to speed shoes one
-		move.b	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
-
-	if FEATURE_BACKUP
-		move.b	mBackTempoSpeed.w,mBackTempoCur.w; do the same for backup tempos
-		move.b	mBackTempoSpeed.w,mBackTempo.w
-	endif
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Reset music flags (underwater mode and tempo mode)
 ; ---------------------------------------------------------------------------
 
@@ -970,4 +966,19 @@ dReqVolUpMusicFM:
 	endm
 
 locret_ReqVolUp:
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Enable speed shoes mode
+; ---------------------------------------------------------------------------
+
+dPlaySnd_ShoesOn:
+		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
+		move.b	mTempoSpeed.w,mTempoCur.w; set tempo accumulator/counter to speed shoes one
+		move.b	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
+
+	if FEATURE_BACKUP
+		move.b	mBackTempoSpeed.w,mBackTempoCur.w; do the same for backup tempos
+		move.b	mBackTempoSpeed.w,mBackTempo.w
+	endif
 		rts

@@ -25,6 +25,7 @@ FEATURE_UNDERWATER =	1	; set to 1 to enable underwater mode
 FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX in Sonic 1, 2 and 3K...
 FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
+FEATURE_PSG4 =		1	; set to 1 to enable a separate PSG4 channel
 FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 
@@ -192,29 +193,30 @@ ctDAC2 =	(1<<ctbDAC)|$06	; DAC 2
 ctPSG1 =	$80		; PSG 1	- Valid for SFX
 ctPSG2 =	$A0		; PSG 2	- Valid for SFX
 ctPSG3 =	$C0		; PSG 3	- Valid for SFX
-ctPSG4 =	$E0		; PSG 4
+ctPSG4 =	$E0		; PSG 4 - Valid for SFX
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Misc flags
 ; ---------------------------------------------------------------------------
 
-Mus_DAC =	2		; number of DAC channels
-Mus_FM =	5+(FEATURE_FM6<>0)+((FEATURE_FM3SM<>0)*3); number of FM channels (5, 6, 8, or 9)
-Mus_PSG =	3		; number of PSG channels
-Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG; total number of music channels
-SFX_DAC =	1		; number of DAC SFX channels
-SFX_FM =	3		; number of FM SFX channels
-SFX_PSG =	3		; number of PSG SFX channels
-SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG; total number of SFX channels
+Mus_DAC =	2			; number of DAC channels
+Mus_HeadFM =	5+(FEATURE_FM6<>0)	; number of FM channels for SMPS2ASM
+Mus_FM =	Mus_HeadFM+((FEATURE_FM3SM<>0)*3); number of FM channels (5, 6, 8, or 9)
+Mus_PSG =	3+(FEATURE_PSG4<>0)	; number of PSG channels
+Mus_Ch =	Mus_DAC+Mus_FM+Mus_PSG	; total number of music channels
+SFX_DAC =	1			; number of DAC SFX channels
+SFX_FM =	3			; number of FM SFX channels
+SFX_PSG =	3+(FEATURE_PSG4<>0)	; number of PSG SFX channels
+SFX_Ch =	SFX_DAC+SFX_FM+SFX_PSG	; total number of SFX channels
 
-VoiceRegs =	29		; total number of registers inside of a voice
-VoiceTL =	VoiceRegs-4	; location of voice TL levels
+VoiceRegs =	29			; total number of registers inside of a voice
+VoiceTL =	VoiceRegs-4		; location of voice TL levels
 	if FEATURE_FM3SM
-VoiceRegsSM =	8		; total number of registers to write for FM3 Special Mode voice
+VoiceRegsSM =	8			; total number of registers to write for FM3 Special Mode voice
 	endif
 
-MaxPitch =	$1000		; this is the maximum pitch Dual PCM is capable of processing
-Z80E_Read =	$0018		; this is used by Dual PCM internally but we need this for macros
+MaxPitch =	$1000			; this is the maximum pitch Dual PCM is capable of processing
+Z80E_Read =	$0018			; this is used by Dual PCM internally but we need this for macros
 
 ; NOTE: There is no magic trick to making Dual PCM play samples at higher rates.
 ; These values are only here to allow you to give lower pitch samples higher
@@ -294,6 +296,9 @@ mFM6		ds.b cSize	; FM 6 data
 mPSG1		ds.b cSize	; PSG 1 data
 mPSG2		ds.b cSize	; PSG 2 data
 mPSG3		ds.b cSize	; PSG 3 data
+	if FEATURE_PSG4
+mPSG4		ds.b cSize	; PSG 4 data
+	endif
 mSFXDAC1	ds.b cSizeSFX	; SFX DAC 1 data
 mSFXFM3		ds.b cSizeSFX	; SFX FM 3 data
 mSFXFM4		ds.b cSizeSFX	; SFX FM 4 data
@@ -301,6 +306,9 @@ mSFXFM5		ds.b cSizeSFX	; SFX FM 5 data
 mSFXPSG1	ds.b cSizeSFX	; SFX PSG 1 data
 mSFXPSG2	ds.b cSizeSFX	; SFX PSG 2 data
 mSFXPSG3	ds.b cSizeSFX	; SFX PSG 3 data
+	if FEATURE_PSG4
+mSFXPSG4	ds.b cSizeSFX	; SFX PSG 4 data
+	endif
 mChannelEnd =	*		; used to determine where channel RAM ends
 
 	if FEATURE_BACKUP
@@ -331,6 +339,9 @@ mBackFM6	ds.b cSize	; back-up FM 6 data
 mBackPSG1	ds.b cSize	; back-up PSG 1 data
 mBackPSG2	ds.b cSize	; back-up PSG 2 data
 mBackPSG3	ds.b cSize	; back-up PSG 3 data
+	if FEATURE_PSG4
+mBackPSG4	ds.b cSize	; back-up PSG 4 data
+	endif
 
 mBackTempoMain	ds.b 1		; back-up music normal tempo
 mBackTempoSpeed	ds.b 1		; back-up music speed shoes tempo

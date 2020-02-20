@@ -1,7 +1,7 @@
 FinalBoss_Header:
 	sHeaderInit						; Z80 offset is $1380
 	sHeaderTempo	$01, $57
-	sHeaderCh	$05, $03
+	sHeaderCh	$05, $04
 	sHeaderDAC	FinalBoss_DAC1
 	sHeaderDAC	FinalBoss_DAC2
 	sHeaderFM	FinalBoss_FM1, $F4, $0B
@@ -11,7 +11,8 @@ FinalBoss_Header:
 	sHeaderFM	FinalBoss_FM5, $F4, $14
 	sHeaderPSG	FinalBoss_PSG1, $D0+$0C, $30, $00, vNone
 	sHeaderPSG	FinalBoss_PSG2, $F4+$0C, $28, $00, v08
-	sHeaderPSG	FinalBoss_PSG3, $FE+$0C, $18, $00, v04
+	sHeaderPSG	FinalBoss_PSG3, $F4+$0C, $38, $00, v04
+	sHeaderPSG	FinalBoss_PSG4, $00, $18, $00, v04
 
 	; Patch $00
 	; $3A
@@ -291,24 +292,29 @@ FinalBoss_Loop13:
 	sLoop		$00, $02, FinalBoss_Loop13
 	sJump		FinalBoss_Jump3
 
+FinalBoss_PSG3:
+	dc.b nRst, $02
+	saDetune	$06
+	sModAMPS	$0A, $02, -$02, $01
+	sJump		FinalBoss_Jump4
+
 FinalBoss_PSG2:
 	sModAMPS	$0B, $02, $02, $01
 
 FinalBoss_Jump4:
 	dc.b nRst, $60
-	sLoop		$00, $0F, FinalBoss_PSG2
+	sLoop		$00, $0F, FinalBoss_Jump4
 	sCall		FinalBoss_Call11
 	dc.b nF4, $54, nG4, $06, nA4, nE4, $60
 	sCall		FinalBoss_Call11
 	dc.b nF4, $60, nG4
 	sJump		FinalBoss_Jump4
 
-FinalBoss_PSG3:
-	sNoisePSG	snWhitePSG3
+FinalBoss_PSG4:
 	sGate		$06
 
 FinalBoss_Jump5:
-	dc.b nA5, $18, $18, $18, $0C, $0C
+	dc.b nWhite10, $18, $18, $18, $0C, $0C
 	sJump		FinalBoss_Jump5
 
 FinalBoss_DAC1:

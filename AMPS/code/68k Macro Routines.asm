@@ -37,11 +37,16 @@ dNoteToutFM	macro
 ; Note timout handler macro for PSG
 ; ---------------------------------------------------------------------------
 
-dNoteToutPSG	macro
+dNoteToutPSG	macro	addr
 	dNoteToutHandler			; include timeout handler
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 		bsr.w	dMutePSGmus		; mute PSG channel
+
+	if "addr"==""
 		bra.w	.next			; jump to next track
+	else
+		jmp	addr(pc)		; jump directly to address
+	endif
 .endt
     endm
 ; ===========================================================================
@@ -218,7 +223,7 @@ dGenLoops macro	mode,jump,loop,type
 ; Macro for processing the tracker
 ; ---------------------------------------------------------------------------
 
-dDoTracker	macro
+dDoTracker	macro nf
 		move.l	cData(a1),a2		; grab tracker address
 	if safe=1
 		AMPS_Debug_TrackUpd		; check if this address is valid
@@ -234,7 +239,7 @@ dDoTracker	macro
 		bra.s	.next			; however, for example sStop will make us return here.
 
 .notcomm
-	if FEATURE_PORTAMENTO
+	if FEATURE_PORTAMENTO&("nf"=="")
 		move.w	cFreq(a1),-(sp)		; we need to know the last frequency in portamento mode, so store it in stack
 	endif
     endm
@@ -247,7 +252,7 @@ dProcNote	macro sfx, chan
 		move.l	a2,cData(a1)		; save tracker address
 		move.b	cLastDur(a1),cDuration(a1); copy stored duration
 
-	if FEATURE_PORTAMENTO
+	if FEATURE_PORTAMENTO&(chan<>4)
 		move.w	(sp)+,d1		; load the last frequency to d2
 		if chan<=0
 			beq.s	.noporta	; if it was not 0, branch

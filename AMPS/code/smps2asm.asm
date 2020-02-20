@@ -17,6 +17,21 @@
 	enum nC7=$D5,nCs7,nD7,nEb7,nE7,nF7,nFs7,nG7,nAb7,nA7,nBb7
 	enum nRst=$80, nHiHat=nA6
 ; ---------------------------------------------------------------------------------------------
+; Note Equates for PSG4
+; ---------------------------------------------------------------------------------------------
+
+		phase nRst
+		ds.w 1		; rest channel
+nPeri10		ds.w 1		; periodic noise at pitch $10
+nPeri20		ds.w 1		; periodic noise at pitch $20
+nPeri40		ds.w 1		; periodic noise at pitch $40
+nPeriPSG3	ds.w 1		; periodic noise with pitch from PSG3
+nWhite10	ds.w 1		; white noise at pitch $10
+nWhite20	ds.w 1		; white noise at pitch $20
+nWhite40	ds.w 1		; white noise at pitch $40
+nWhitePSG3	ds.w 1		; white noise with pitch from PSG3
+n4Last =	*		; used for safe mode
+; ---------------------------------------------------------------------------------------------
 ; Header Macros
 ; ---------------------------------------------------------------------------------------------
 
@@ -31,18 +46,18 @@ sHeaderInitSFX	macro
     endm
 
 ; Header - Set up Channel Usage
-sHeaderCh	macro fm,psg
-	if "psg"<>""
-		dc.b psg-1, fm-1
-		if fm>(5+(FEATURE_FM6<>0))
-			warning "You sure there are fm FM channels?"
+sHeaderCh	macro fmc,psgc
+	if "psgc"<>""
+		dc.b psgc-1, fmc-1
+		if fmc>Mus_HeadFM
+			warning "You sure there are so many fm FM channels?"
 		endif
 
-		if psg>3
-			warning "You sure there are psg PSG channels?"
+		if psgc>Mus_PSG
+			warning "You sure there are so many psg PSG channels?"
 		endif
 	else
-		dc.b fm-1
+		dc.b fmc-1
 	endif
     endm
 

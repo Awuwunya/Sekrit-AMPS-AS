@@ -156,6 +156,9 @@ Textinit:
 	asc.w 0,"PSG1"
 	asc.w 0,"PSG2"
 	asc.w 0,"PSG3"
+	if FEATURE_PSG4
+		asc.w 0,"PSG4"
+	endif
 	asc.w 0,"MUS"
 	asc.w 0,"DMA"
 	asc.w 0,"COMM"
@@ -238,65 +241,14 @@ GameProgram:
 		move.l	(a0)+,(a5)
 		move.l	(a0)+,(a5)
 
-	vdpCoord 1,5,WRITE
+.ln :=		5
+	rept Mus_Ch
+		vdpCoord 1,.ln,WRITE
 		move.l	(a0)+,(a5)
 		move.l	(a0)+,(a5)
 
-	vdpCoord 1,6,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,7,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,8,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,9,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,10,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,11,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,12,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,13,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	vdpCoord 1,14,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-	if FEATURE_FM6
-		vdpCoord 1,15,WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-	endif
-
-	if FEATURE_FM3SM
-		vdpCoord 1,(15+FEATURE_FM6),WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-		vdpCoord 1,(16+FEATURE_FM6),WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-
-		vdpCoord 1,(17+FEATURE_FM6),WRITE
-		move.l	(a0)+,(a5)
-		move.l	(a0)+,(a5)
-	endif
+.ln :=		.ln+1
+	endm
 
 	vdpCoord 1,24,WRITE
 		move.l	(a0)+,(a5)

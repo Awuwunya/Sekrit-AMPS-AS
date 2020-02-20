@@ -1,7 +1,7 @@
 Metropolis_Header:
 	sHeaderInit						; Z80 offset is $1380
 	sHeaderTempo	$01, $16
-	sHeaderCh	$05, $03
+	sHeaderCh	$05, $04
 	sHeaderDAC	Metropolis_DAC1
 	sHeaderDAC	Metropolis_DAC2
 	sHeaderFM	Metropolis_FM1, $F4, $0E
@@ -10,8 +10,9 @@ Metropolis_Header:
 	sHeaderFM	Metropolis_FM4, $0C, $16
 	sHeaderFM	Metropolis_FM5, $0C, $16
 	sHeaderPSG	Metropolis_PSG1, $E8+$0C, $30, $00, vNone
-	sHeaderPSG	Metropolis_PSG2, $DC+$0C, $40, $00, vNone
-	sHeaderPSG	Metropolis_PSG3, $00+$0C, $10, $00, v03
+	sHeaderPSG	Metropolis_PSG2, $E8+$0C, $40, $00, vNone
+	sHeaderPSG	Metropolis_PSG3, $E8+$0C, $50, $00, vNone
+	sHeaderPSG	Metropolis_PSG4, $00, $10, $00, v03
 
 	; Patch $00
 	; $3C
@@ -223,8 +224,15 @@ Metropolis_Loop2:
 	saTranspose	$F4
 	sJump		Metropolis_Loop1
 
+Metropolis_PSG3:
+	sModAMPS	$0A, $01, $04, $03
+	saDetune	$04
+	sJump		Metropolis_Loop11
+
 Metropolis_PSG2:
-	saTranspose	$0C
+	sModAMPS	$08, $01, $03, $04
+	saDetune	-$03
+	sJump		Metropolis_Loop11
 
 Metropolis_PSG1:
 	sModAMPS	$06, $01, $02, $04
@@ -463,9 +471,6 @@ Metropolis_Loop15:
 	dc.b nRst, nRst, nRst, nRst, dClap
 	sJump		Metropolis_Loop15
 
-Metropolis_PSG3:
-	sNoisePSG	snWhitePSG3
-
-Metropolis_Jump3:
-	dc.b nRst, $60, nRst, $54, nAb5, $0C
-	sJump		Metropolis_Jump3
+Metropolis_PSG4:
+	dc.b nRst, $60, nRst, $54, nWhite10, $0C
+	sJump		Metropolis_PSG4

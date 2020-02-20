@@ -827,9 +827,20 @@ dcBackup:
 ; ---------------------------------------------------------------------------
 
 		move.b	#$FF,dPSG.l		; mute PSG4
+	if FEATURE_PSG4
+		tst.b	mPSG4.w			; check if PSG4 is running
+		bpl.s	.cpsg3			; if not, skip
+		move.b	mPSG4+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
+		rts
+
+.cpsg3
+	endif
+
 		cmp.b	#ctPSG4,mPSG3+cType.w	; check if PSG3 channel is in PSG4 mode
 		bne.s	locret_Backup		; if not, skip
 		move.b	mPSG3+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
 
 	elseif safe=1
 		AMPS_Debug_dcBackup
