@@ -40,7 +40,12 @@ dNoteToutFM	macro
 dNoteToutPSG	macro	addr
 	dNoteToutHandler			; include timeout handler
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
-		bsr.w	dMutePSGmus		; mute PSG channel
+
+		if FEATURE_PSGADSR
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
 
 	if "addr"==""
 		bra.w	.next			; jump to next track
@@ -196,7 +201,7 @@ dModulate	macro jump,loop,type
 ; Macro for generating fast looping code for modulation and portamento
 ; ---------------------------------------------------------------------------
 
-dGenLoops macro	mode,jump,loop,type
+dGenLoops	macro	mode,jump,loop,type
 	if type>=0
 		if FEATURE_DACFMVOLENV=0
 			bclr	#cfbVol,(a1)	; check if volume update is needed and clear bit
@@ -321,6 +326,29 @@ dProcNote	macro sfx, chan
 		move.w	d2,cPortaDisp(a1)	; save portamento displacement value
 
 .noporta
+	endif
+
+	if (chan=1)&FEATURE_PSGADSR
+		btst	#cfbHold,(a1)		; check if note is held
+		bne.w	.endpn			; if yes, skip dis
+		moveq	#admMask,d4		; prepare mode bits to d4
+		and.b	adFlags(a3),d4		; get only mode to d4
+
+		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
+		move.b	3(a4,d4.w),d4		; load the initial flags to d4
+		move.b	d4,adFlags(a3)		; and save to ADSR as well...
+
+		and.b	#adpMask,d4		; get only phase to d4
+		cmp.b	#adpSustain,d4		; check if sustain or release
+		blo.s	.noadsrf		; branch if not
+
+		moveq	#0,d4
+		move.b	cADSR(a1),d4		; load ADSR to d4
+		lsl.w	#3,d4			; multiply offset by 8
+		lea	dBankADSR(pc),a4	; load ADSR bank address to a4
+		move.b	5(a4,d4.w),(a3)		; load decay volume from ADSR to volume byte!
+
+.noadsrf
 	endif
 
 	if FEATURE_MODULATION|(sfx=0)|(chan=1)
@@ -520,14 +548,20 @@ dGetFreqPSG	macro
 		bhs.s	.norest			; branch if note wasnt $80 (rest)
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 		move.w	#-1,cFreq(a1)		; set invalid PSG frequency
-		jsr	dMutePSGmus(pc)		; mute this PSG channel
+
+		if FEATURE_PSGADSR
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
 		bra.s	.freqgot
 
 .norest
 		add.b	cPitch(a1),d1		; add pitch offset to note
 		andi.w	#$7F,d1			; keep within $80 notes
 		add.w	d1,d1			; double offset (each entry is a word)
-		move.w	(a3,d1.w),cFreq(a1)	; load and save the requested frequency
+		lea	dFreqPSG(pc),a4		; load PSG frequency table to a4
+		move.w	(a4,d1.w),cFreq(a1)	; load and save the requested frequency
 
 	if safe=1
 		AMPS_Debug_NotePSG		; check if the note was valid
@@ -546,7 +580,7 @@ dStopChannel	macro	stop
 		btst	#ctbDAC,cType(a1)	; check if this was a DAC channel
 		bne.s	.muteDAC		; if we are, skip
 
-	if stop=0
+	if stop<=0
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
 		bra.s	.cont
 	else
@@ -555,24 +589,53 @@ dStopChannel	macro	stop
 ; ---------------------------------------------------------------------------
 
 .mutePSG
-	if stop=0
-		jsr	dMutePSGmus(pc)		; mute PSG channel
+	if stop<=0
+		if FEATURE_PSGADSR&(stop=0)
+			jsr	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jsr	dMutePSGmus(pc)	; mute PSG channel
+		endif
 		bra.s	.cont
 	else
-		jmp	dMutePSGmus(pc)		; mute PSG channel
+		if FEATURE_PSGADSR
+			jmp	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jmp	dMutePSGmus(pc)	; mute PSG channel
+		endif
 	endif
 ; ---------------------------------------------------------------------------
 
 .muteDAC
-	if stop=0
+	if stop<=0
 		jsr	dMuteDACmus(pc)		; mute DAC channel
 	else
 		jmp	dMuteDACmus(pc)		; mute DAC channel
 	endif
 
 .cont
-	if stop<>0
-		rts
+    endm
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Macros for resetting ADSR memory
+; ---------------------------------------------------------------------------
+
+dResetADSR	macro areg, dreg, mode
+	move.w	#$7F00|admNormal|adpRelease,dreg; load default value to dreg
+
+	if mode&1
+		lea	mADSR.w,areg		; load ADSR address to areg
+
+		rept aSizeMus/adSize
+			move.w	dreg,(areg)+	; reset all music channel data
+		endm
+	endif
+
+	if mode&2
+		lea	mADSRSFX.w,areg		; load ADSR SFX address to areg
+
+		rept aSizeSFX/adSize
+			move.w	dreg,(areg)+	; reset all sfx channel data
+		endm
 	endif
     endm
 ; ===========================================================================

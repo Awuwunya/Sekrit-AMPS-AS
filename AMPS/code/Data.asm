@@ -238,6 +238,7 @@ ModEnvs_End:
 ; Include music, sound effects and voice table
 ; ---------------------------------------------------------------------------
 
+	include "AMPS/ADSR.s2a"		; include universal ADSR bank
 	include "AMPS/Voices.s2a"	; include universal Voice bank
 
 ; include SFX and music

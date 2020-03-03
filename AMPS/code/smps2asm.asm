@@ -106,12 +106,28 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 	dc.b (pitch)&$FF,(vol)&$FF
     endm
 ; ---------------------------------------------------------------------------------------------
+; Macros for PSG instruments
+; ---------------------------------------------------------------------------------------------
+
+; Patches - ADSR data
+;   mode -> sets the flags used for ADSR. Bit7 is always set.
+;   atkvol -> Volume to attack to (higher = quieter)
+;   atkdelta -> How fast to attack. 2.6 fixed point format
+;   decayvol -> Volume to decay to (higher = quieter)
+;   decaydelta -> How fast to decay. 2.6 fixed point format
+;   releasedelta -> How fast to release. 2.6 fixed point format
+
+spADSR		macro mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
+	dc.b mode, 0
+	dc.b atkdelta, atkvol, decaydelta, decayvol, releasedelta
+	dc.b 0
+    endm
+; ---------------------------------------------------------------------------------------------
 ; Macros for FM instruments
-; Patches - Feedback
 ; ---------------------------------------------------------------------------------------------
 
 ; Patches - Algorithm
-spAlgorithm macro val, name
+spAlgorithm	macro val, name
 	if (sPatNum<>0)&(safe=0)
 		; align the patch
 		dc.b ((*)!(sPatNum*spTL4))&$FF
@@ -127,6 +143,7 @@ sPatNum :=	sPatNum+1
 spAl :=		val
     endm
 
+; Patches - Feedback
 spFeedback	macro val
 spFe :=		val
     endm
@@ -506,6 +523,11 @@ sCondReg	macro off, cond, val
 ; FF24xx - Play another music/sfx (SND_CMD)
 sPlayMus	macro id
 	dc.b $FF,$24, id
+    endm
+
+; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
+ssModeADSR	macro mode
+	dc.b $FF,$28, mode
     endm
 
 ; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)

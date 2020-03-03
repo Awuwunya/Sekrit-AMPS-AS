@@ -1,0 +1,3 @@
+dBankADSR:
+	spADSR	admNormal,	$00, $68, $10, $10, $23
+	spADSR	admImm,		$00, $FF, $00, $FF, $FF

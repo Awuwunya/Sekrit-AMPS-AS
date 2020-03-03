@@ -5,10 +5,16 @@
 
 dAMPSdoPSGSFX:
 		moveq	#SFX_PSG-(FEATURE_PSG4<>0)-1,d0; get total number of SFX PSG channels to d0
-		lea	dFreqPSG(pc),a3		; load PSG frequency table for quick access to a3
+	if FEATURE_PSGADSR
+		lea	mADSRSFX-adSize.w,a3	; load PSG ADSR data to a3
+	endif
 
 dAMPSnextPSGSFX:
+	if FEATURE_PSGADSR
+		addq.w	#adSize,a3		; add ADSR size to a3
+	endif
 		add.w	#cSizeSFX,a1		; go to the next channel
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -52,7 +58,11 @@ dAMPSnextPSGSFX:
 
 dAMPSdoPSG4SFX:
 	if FEATURE_PSG4
-		add.w	#cSizeSFX,a1		; go to the next channe
+		if FEATURE_PSGADSR
+			addq.w	#adSize,a3	; add ADSR size to a3
+		endif
+		add.w	#cSizeSFX,a1		; go to the next channel
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	dCheckTracker		; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -105,11 +115,18 @@ dCheckTracker:
 ; ---------------------------------------------------------------------------
 
 dAMPSdoPSG:
-		moveq	#Mus_PSG-(FEATURE_PSG4<>0)-1,d0		; get total number of music PSG channels to d0
-		lea	dFreqPSG(pc),a3		; load PSG frequency table for quick access to ae
+	clr.w	-$1002.w
+		moveq	#Mus_PSG-(FEATURE_PSG4<>0)-1,d0; get total number of music PSG channels to d0
+	if FEATURE_PSGADSR
+		lea	mADSR-adSize.w,a3	; load PSG ADSR SFX data to a3
+	endif
 
 dAMPSnextPSG:
-		add.w	#cSize,a1		; go to the next channe
+	if FEATURE_PSGADSR
+		addq.w	#adSize,a3		; add ADSR size to a3
+	endif
+		add.w	#cSize,a1		; go to the next channel
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	.next			; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -165,7 +182,11 @@ dAMPSnextPSG:
 ; ---------------------------------------------------------------------------
 
 dAMPSdoPSG4:
-		add.w	#cSize,a1		; go to the next channe
+	if FEATURE_PSGADSR
+		addq.w	#adSize,a3		; add ADSR size to a3
+	endif
+		add.w	#cSize,a1		; go to the next channel
+
 		tst.b	(a1)			; check if channel is running a tracker
 		bpl.w	dAMPSdoDACSFX		; if not, branch
 		subq.b	#1,cDuration(a1)	; decrease note duration
@@ -231,7 +252,12 @@ dNotesPSG4:
 .rest
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 		move.w	#-1,cFreq(a1)		; set invalid PSG frequency
-		jmp	dMutePSGmus(pc)		; mute this PSG channel
+
+		if FEATURE_PSGADSR
+			jmp	dKeyOffPSG(pc)	; key off PSG channel
+		else
+			jmp	dMutePSGmus(pc)	; mute PSG channel
+		endif
 ; ---------------------------------------------------------------------------
 	endif
 ; ===========================================================================
@@ -247,11 +273,34 @@ dNotesPSG4:
 
 dUpdateFreqPSG:
 		move.w	cFreq(a1),d2		; get channel base frequency to d2
-		bpl.s	.detune			; if it was not rest frequency, branch
+		bpl.s	dUpdateFreqPSG4		; if it was not rest frequency, branch
 		bset	#cfbRest,(a1)		; set channel resting flag
-		rts
 
-.detune
+	if FEATURE_PSGADSR
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Routine for keying off PSG
+;
+; input:
+;   a1 - Channel to operate on
+;   a3 - Channel ADSR data
+;   a4 - Used to reference phase table
+; thrash:
+;   d3 - Used to calculate the volume command
+; ---------------------------------------------------------------------------
+
+dKeyOffPSG:
+		moveq	#admMask,d3		; prapre only the mode bits
+		and.b	adFlags(a3),d3		; get mode bits from flags
+
+		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
+		move.b	2(a4,d3.w),adFlags(a3)	; load new flags from table
+		bset	#cfbVol,(a1)		; force volume update
+	endif
+		rts
+; ===========================================================================
+
+dUpdateFreqPSG4:
 		move.b	cDetune(a1),d6		; load detune value to d6
 		ext.w	d6			; extend to word
 		add.w	d6,d2			; add to channel base frequency to d2
@@ -323,33 +372,45 @@ locret_UpdateFreqPSG:
 
 dEnvelopePSG_SFX:
 	if FEATURE_SFX_MASTERVOL=0
-		btst	#cfbRest,(a1)		; check if channel is resting
-		bne.s	locret_UpdateFreqPSG	; if is, do not update anything
+		if FEATURE_PSGADSR=0
+			btst	#cfbRest,(a1)		; check if channel is resting
+			bne.s	locret_UpdateFreqPSG	; if is, do not update anything
+		endif
 
 		move.b	cVolume(a1),d1		; load channel volume to d1
 		bra.s	dEnvelopePSG2		; do not add master volume
 	endif
 
 dEnvelopePSG:
+	if FEATURE_PSGADSR=0
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	locret_UpdateFreqPSG	; if is, do not update anything
+	endif
 
-		move.b	mMasterVolPSG.w,d1	; load PSG master volume to d5
-		add.b	cVolume(a1),d1		; add channel volume to d5
+		move.b	mMasterVolPSG.w,d1	; load PSG master volume to d1
+		add.b	cVolume(a1),d1		; add channel volume to d1
 		bpl.s	dEnvelopePSG2		; branch if volume did not overflow
 		moveq	#$7F,d1			; set to maximum volume
 
 dEnvelopePSG2:
+	if FEATURE_PSGADSR
+		jsr	dProcessADSR(pc)	; process ADSR
+	endif
+
 		moveq	#0,d4
 		move.b	cVolEnv(a1),d4		; load volume envelope ID to d4
 		beq.s	.ckflag			; if 0, check if volume update was needed
 
 		jsr	dVolEnvProg(pc)		; run the envelope program
+	if FEATURE_PSGADSR=0
 		bne.s	dUpdateVolPSG		; if it was necessary to update volume, do so
+	endif
 
 .ckflag
-		btst	#cfbVol,(a1)		; test volume update flag
-		beq.s	locret_UpdVolPSG	; branch if no volume update was requested
+	if FEATURE_PSGADSR=0
+		btst	#cfbVol,(a1)		; check if volume update was requested
+		beq.s	locret_UpdVolPSG	; branch if not
+	endif
 	; continue to update PSG volume
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -364,22 +425,25 @@ dEnvelopePSG2:
 
 dUpdateVolPSG:
 		bclr	#cfbVol,(a1)		; clear volume update flag
-		btst	#cfbRest,(a1)		; is this channel resting
-		bne.s	locret_UpdVolPSG	; if is, do not update
 		btst	#cfbInt,(a1)		; is channel interrupted by sfx?
 		bne.s	locret_UpdVolPSG	; if is, do not update
 
+	if FEATURE_PSGADSR=0
+		btst	#cfbRest,(a1)		; is this channel resting
+		bne.s	locret_UpdVolPSG	; if is, do not update
 		btst	#cfbHold,(a1)		; check if note is held
 		beq.s	.send			; if not, update volume
+
 		cmp.w	#mSFXDAC1,a1		; check if this is a SFX channel
 		bhs.s	.send			; if so, update volume
-
 		tst.b	cGateMain(a1)		; check if note timeout is active
 		beq.s	.send			; if not, update volume
 		tst.b	cGateCur(a1)		; is note stopped already?
 		beq.s	locret_UpdVolPSG	; if is, do not update
+	endif
 
 .send
+
 		cmpi.b	#$7F,d1			; check if volume is out of range
 		bls.s	.nocap			; if not, branch
 		moveq	#$7F,d1			; cap volume to silent
@@ -407,6 +471,10 @@ dMutePSGmus:
 		bne.s	locret_MutePSG		; if yes, do not update
 
 dMutePSGsfx:
+	if FEATURE_PSGADSR
+		move.w	#$7F00|adpRelease,(a3)	; forcibly mute ADSR
+	endif
+
 		moveq	#$1F,d3			; prepare volume update to mute value to d3
 		or.b	cType(a1),d3		; combine channel type value with d3
 		move.b	d3,dPSG.l		; write volume command to PSG port

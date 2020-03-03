@@ -26,6 +26,7 @@ FEATURE_BACKUP =	1	; set to 1 to enable back-up channels. Used for the 1-up SFX 
 FEATURE_BACKUPNOSFX =	1	; set to 1 to disable SFX while a song is backed up. Used for the 1-up SFX.
 FEATURE_FM6 =		1	; set to 1 to enable FM6 to be used in music
 FEATURE_PSG4 =		1	; set to 1 to enable a separate PSG4 channel
+FEATURE_PSGADSR =	1	; set to 1 to enable ADSR for PSG
 FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 
@@ -49,16 +50,14 @@ safe =	1
 cFlags		ds.b 1		; various channel flags, see below
 cType		ds.b 1		; hardware type for the channel
 cData		ds.l 1		; 68k tracker address for the channel
-	if FEATURE_DACFMVOLENV=0
-cEnvPos =	*		; volume envelope position. PSG only
-	endif
+cStatPSG4 =	*		; PSG4 type value. PSG3 and PSG4 only
 cPanning	ds.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2-op4.
 cDetune		ds.b 1		; frequency detune (offset)
 cPitch		ds.b 1		; pitch (transposition) offset
 cVolume		ds.b 1		; channel volume
 cTick		ds.b 1		; channel tick multiplier
-	if FEATURE_DACFMVOLENV=0
-cVolEnv =	*		; volume envelope ID. PSG only
+	if FEATURE_PSGADSR
+cADSR =		*		; channel ADSR ID, PSG only
 	endif
 cSample =	*		; channel sample ID, DAC only
 cVoice		ds.b 1		; YM2612 voice ID. FM only
@@ -81,10 +80,8 @@ cPortaFreq	ds.w 1		; frequency offset for portamento.
 cPortaDisp	ds.w 1		; frequency displacement per frame for portamento.
 	endif
 
-	if FEATURE_DACFMVOLENV
 cVolEnv		ds.b 1		; volume envelope ID
 cEnvPos		ds.b 1		; volume envelope position
-	endif
 
 	if FEATURE_MODENV
 cModEnv		ds.b 1		; modulation envelope ID
@@ -96,12 +93,6 @@ cLoop		ds.b 3		; loop counter values
 		even
 cSizeSFX =	*		; size of each SFX track (this also sneakily makes sure the memory is aligned to word always. Additional loop counter may be added if last byte is odd byte)
 cPrio =		*-1		; sound effect channel priority. SFX only
-
-	if FEATURE_DACFMVOLENV
-cStatPSG4 =	cPanning	; PSG4 type value. PSG3 only
-	else
-cStatPSG4 =	*-2		; PSG4 type value. PSG3 only
-	endif
 
 cGateCur	ds.b 1		; frame counter to note off. Music only
 cGateMain	ds.b 1		; copy of frame counter to note off. Music only
@@ -126,8 +117,68 @@ cfbVol		ds.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; ADSR data channel configuration
+; ---------------------------------------------------------------------------
+
+	if FEATURE_PSGADSR
+	phase 0
+adVolume	ds.b 1		; current ADSR volume
+adFlags		ds.b 1		; various ADSR flags
+adSize =	*		; size of each ADSR
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; ADSR data configuration
+; ---------------------------------------------------------------------------
+
+	phase 0
+aPSG1		ds.b adSize	; data for PSG1
+aPSG2		ds.b adSize	; data for PSG2
+aPSG3		ds.b adSize	; data for PSG3
+	if FEATURE_PSG4
+aPSG4		ds.b adSize	; data for PSG4
+	endif
+aSizeMus =	*		; size of all data for music channels
+
+	phase 0
+aSFXPSG1	ds.b adSize	; data for SFX PSG1
+aSFXPSG2	ds.b adSize	; data for SFX PSG2
+aSFXPSG3	ds.b adSize	; data for SFX PSG3
+	if FEATURE_PSG4
+aSFXPSG4	ds.b adSize	; data for SFX PSG4
+	endif
+aSizeSFX =	*		; size of all data for music channels
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Bits for adFlags
+; ---------------------------------------------------------------------------
+
+adpMask =	$03		; mask the phase bits
+
+	phase 0			; bits 0 and 1
+adpAttack	ds.b 1		; note is currently attacking
+adpDecay	ds.b 1		; note is currently decaying
+adpSustain	ds.b 1		; note is being sustained
+adpRelease	ds.b 1		; note is currently releasing
+
+admMask =	$3C		; mask the mode bits
+
+	phase 0			; bits 2-5
+admNormal	ds.b 4		; normal mode for ADSR
+admNoAttack	ds.b 4		; attack phase is skipped
+admReAttack	ds.b 4		; repeat attack phase infinitely
+admNoDecay	ds.b 4		; attack and decay phases are skipped
+admReDecay	ds.b 4		; attack phase executed, decay phase is repeated infinitely
+admNoRelease	ds.b 4		; note gets released immediately on note off
+admAttRel	ds.b 4		; note is released right after attack phase ends
+admImm		ds.b 4		; only sustain phase is executed
+
+; bits 7 and 6 used to store accumulator
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; TL modulation operator configuration
 ; ---------------------------------------------------------------------------
+
 	if FEATURE_MODTL
 	phase 0
 toFlags		ds.b 1		; various TL modulation flags
@@ -264,13 +315,20 @@ mLastCue	ds.b 1		; last YM Cue the sound driver was accessing
 	endif			; align channel data
 
 	if FEATURE_MODTL
-mTLSFX		ds.b tSizeSFX	; TL modulation data
+mTLSFX		ds.b tSizeSFX	; TL modulation data for SFX
+	endif
+	if FEATURE_PSGADSR
+mADSRSFX	ds.b aSizeSFX	; ADSR data for SFX
 	endif
 
 mBackUpArea =	*		; this is where backup stuff starts
 	if FEATURE_MODTL
 mTL		ds.b tSizeMus	; TL modulation data
 	endif
+	if FEATURE_PSGADSR
+mADSR		ds.b aSizeMus	; ADSR data
+	endif
+
 mDAC1		ds.b cSize	; DAC 1 data
 mDAC2		ds.b cSize	; DAC 2 data
 mFM1		ds.b cSize	; FM 1 data
@@ -316,6 +374,10 @@ mBackUpLoc =	*		; this is where backup stuff is loaded
 	if FEATURE_MODTL
 mBackTL		ds.b tSizeMus	; back-up for TL modulation data
 	endif
+	if FEATURE_PSGADSR
+mBackADSR	ds.b aSizeMus	; back-up ADSR data
+	endif
+
 mBackDAC1	ds.b cSize	; back-up DAC 1 data
 mBackDAC2	ds.b cSize	; back-up DAC 2 data
 mBackFM1	ds.b cSize	; back-up FM 1 data

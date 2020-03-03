@@ -148,7 +148,9 @@ dVolEnvProg2:
 		moveq	#$7F,d1			; set volume to maximum
 
 .nocap
+	if FEATURE_PSGADSR=0
 		moveq	#1,d4			; set Z flag to 0
+	endif
 
 locret_VolEnvProg:
 		rts
@@ -175,8 +177,13 @@ dEnvCommand:
 ; ---------------------------------------------------------------------------
 
 .hold
+	if FEATURE_PSGADSR
+		subq.b	#1,cEnvPos(a1)		; read the previous byte
+		jmp	dVolEnvProg2(pc)	; run the program again
+	else
 		moveq	#0,d4			; set Z flag to 1
 		rts
+	endif
 ; ---------------------------------------------------------------------------
 
 .reset
@@ -328,4 +335,124 @@ dEnvCommandTL:
 .stop
 		moveq	#$7F,d5			; set volume to $7F
 		rts
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Routine for running modulation envelope programs
+;
+; input:
+;   a1 - Channel to use
+;   a3 - Channel ADSR data
+;   a4 - Used to calculating ADSR data address
+;   d1 - Input volume
+; output:
+;   d1 - Output volume
+; thrash:
+;   d3 - Used for various calculations
+;   d4 - Also used for various calculations
+;   d5 - Low byte cleared
+; ---------------------------------------------------------------------------
+
+	if FEATURE_PSGADSR
+dProcessADSR:
+		clr.b	d5			; clear low byte of d5
+		moveq	#0,d4
+		move.b	cADSR(a1),d4		; load ADSR to d4
+		lsl.w	#3,d4			; multiply offset by 8
+
+		moveq	#adpMask,d3		; load bits to keep to d4
+		and.b	adFlags(a3),d3		; get only flags to d3
+		add.w	d3,d3			; double offset
+		jmp	.table(pc,d3.w)		; run the appropriate routines
+; ---------------------------------------------------------------------------
+
+.table
+		bra.s	.attack			; attack phase
+		bra.s	.decay			; decay phase
+		bra.s	.sustain		; sustain phase
+		bra.s	.release		; release phase
+; ---------------------------------------------------------------------------
+
+.decay
+		addq.w	#2,d4			; skip first 2 bytes
+
+.attack
+		lea	dBankADSR(pc),a4	; load ADSR bank address to a4
+		lea	2(a4,d4.w),a4		; load ADSR data to a4
+		move.w	(a4)+,d4		; load next byte of ADSR data
+		clr.b	d4			; clear low byte
+		lsr.w	#2,d4			; shift 2 bits down (2.6 fixed point format)
+
+		move.b	-1(a4),d3		; load target volume to d3
+		cmp.b	(a3),d3			; check if we need to go backwards
+		beq.s	.nextphase		; if they're the same already (damn wtf), go to next phase
+		bhi.s	.atkpos			; branch if addition should be performed
+
+		sub.w	d4,(a3)			; subtract from volume
+		cmp.b	(a3),d3			; check if we reached the target volume
+		bgt.s	.phaseset		; if we did, branch
+
+.sustain
+		add.b	(a3),d1			; add volume to d1
+		rts
+
+.atkpos
+		add.w	d4,(a3)			; add to volume
+		cmp.b	(a3),d3			; check if we reached the target volume
+		bhi.s	.sustain		; if we did not, branch
+		bra.s	.phaseset
+; ---------------------------------------------------------------------------
+
+.release
+		lea	dBankADSR(pc),a4	; load ADSR bank address to a4
+		lea	6(a4,d4.w),a4		; load ADSR data to a4
+		move.w	(a4)+,d4		; load next byte of ADSR data
+		clr.b	d4			; clear low byte
+		lsr.w	#2,d4			; shift 2 bits down (2.6 fixed point format)
+
+		add.w	d4,(a3)			; add to volume
+		bpl.s	.sustain		; if not max volume, branch
+		move.b	#$7F,(a3)		; force max volume
+		moveq	#$7F,d1			; mute as well
+		rts
+; ---------------------------------------------------------------------------
+
+.phaseset
+		move.b	-1(a4),(a3)		; copy real volume here
+
+.nextphase
+		moveq	#adpMask|admMask,d3	; prepare mode and phase mask to d3
+		and.b	adFlags(a3),d3		; and with flags on d3
+		move.b	dPhaseTableADSR(pc,d3.w),adFlags(a3); load flags from table
+
+		add.b	(a3),d1			; add volume to d1
+		bset	#cfbVol,(a1)		; force volume update
+		rts
+; ---------------------------------------------------------------------------
+
+dPhaseTableADSR:
+	; normal mode:
+		dc.b admNormal|adpDecay, admNormal|adpSustain, admNormal|adpRelease, adpAttack|admNormal
+
+	; noattack mode:
+		dc.b admNoAttack|adpDecay, admNoAttack|adpSustain, admNoAttack|adpRelease, adpAttack|admNoAttack
+
+	; reattack mode:
+		dc.b admReAttack|adpAttack, admReAttack|adpAttack, admReAttack|adpAttack, adpAttack|admReAttack
+
+	; nodecay mode:
+		dc.b admNoDecay|adpSustain, admNoDecay|adpSustain, admNoDecay|adpRelease, adpAttack|admNoDecay
+
+	; noattack mode:
+		dc.b admReDecay|adpDecay, admReDecay|adpDecay, admReDecay|adpDecay, adpAttack|admReDecay
+
+	; norelease mode:
+		dc.b admNoRelease|adpDecay, admNoRelease|adpSustain, adpAttack|admNoRelease, adpAttack|admNoRelease
+
+	; attackrelease mode:
+		dc.b admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpRelease, adpAttack|admAttRel
+
+	; unused
+		dc.b adpSustain|admImm, adpSustain|admImm, adpRelease|admImm, adpSustain|admImm
+; ---------------------------------------------------------------------------
 	endif

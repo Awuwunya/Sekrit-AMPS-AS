@@ -1,0 +1,20 @@
+	sHeaderInit
+	sHeaderTempo	$01, $00
+	sHeaderCh	$00, $01
+	sHeaderDAC	.DAC
+	sHeaderDAC	.DAC
+	sHeaderPSG	.PSG1, $00, $00, $00, vNone
+
+.DAC
+	sStop
+
+.PSG1
+	sVoice		$00
+
+.loop
+	dc.b nA1, $10
+	dc.b nRst, $10
+	dc.b nE1, $10
+	dc.b nRst, $10
+	sStop
+	sJump		.loop

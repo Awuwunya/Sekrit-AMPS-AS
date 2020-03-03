@@ -30,7 +30,7 @@ dCommands:
 	bra.w	dcsTmulCh	; E5 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
 	bra.w	dcsTmul		; E6 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
-	bra.w	dcVoice		; E8 - Set Voice/sample to xx (INSTRUMENT - INS_C_FM / INS_C_DAC)
+	bra.w	dcVoice		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
 	bra.w	dcsTempoShoes	; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
 	bra.w	dcsTempo	; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
 	bra.w	dcSampDAC	; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
@@ -82,16 +82,16 @@ dCommands:
 	bra.w	dcaTempo	; FF 1C - Add xx to music tempo (TEMPO - TEMPO_ADD)
 	bra.w	dcCondReg	; FF 20 - Get RAM table offset by y, and chk zz with cond x (COMM_CONDITION - COMM_SPEC)
 	bra.w	dcSound		; FF 24 - Play another music/sfx (SND_CMD)
-	bra.w	*		; FF 28 - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	dcsModeADSR	; FF 28 - Set ADSR mode and restart ADSR instrument (ADSR - ADSR_MODE)
 	bra.w	dcCont		; FF 2C - Do a continuous SFX loop (CONT_SFX)
 	bra.w	dcSpecFM3	; FF 30 - Enable FM3 special mode (SPC_FM3)
 	bra.w	dcFilter	; FF 34 - Set DAC filter bank. (DAC_FILTER)
 	bra.w	dcBackup	; FF 38 - Load the last song from back-up (FADE_IN_SONG)
 	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
-	bra.w	dcCSMOn		; FF 40 - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
-	bra.w	dcCSMOff	; FF 44 - Disable CMS mode (SPC_FM3 - CSM_OFF)
-	bra.w	*		; FF 48 - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
-	bra.w	*		; FF 4C - Enable CMS mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
+	bra.w	*		; FF 48 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	*		; FF 4C - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 
 	if FEATURE_MODTL
 tlmod	macro name
@@ -136,7 +136,7 @@ dcskip	macro amount
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	dcskip	1		; E8 - Add xx to music tempo (TEMPO - TEMPO_ADD)
 	dcskip	1		; E9 - Set music tempo to xx (TEMPO - TEMPO_SET)
-	dcskip	1		; EA - Set Voice/voice/sample to xx (INSTRUMENT - INS_C_FM / INS_C_PSG / INS_C_DAC)
+	dcskip	1		; EA - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
 	dcskip	0		; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
 	dcskip	0		; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
 	dcskip	1		; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
@@ -732,6 +732,24 @@ dcModEnv:
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Tracker command for setting the ADSR mode bits
+; ---------------------------------------------------------------------------
+
+dcsModeADSR:
+	if FEATURE_PSGADSR
+		tst.b	cType(a1)		; check if this is a PSG channel
+		bpl.s	.error			; if not, error
+		move.b	(a2)+,(a3)		; set new mode
+		rts
+
+.error
+		illegal
+
+	elseif safe=1
+		illegal
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Tracker command for loading a backed up track
 ; ---------------------------------------------------------------------------
 
@@ -788,10 +806,30 @@ dcBackup:
 		move.b	d3,dZ80+PCM2_VolumeCur+1.l; set PCM2 volume as mute
 	startZ80
 ; ---------------------------------------------------------------------------
+; Special logic to handle PSG4
+; ---------------------------------------------------------------------------
+
+		move.b	#$FF,dPSG.l		; mute PSG4
+	if FEATURE_PSG4
+		tst.b	mPSG4.w			; check if PSG4 is running
+		bpl.s	.cpsg3			; if not, skip
+		move.b	mPSG4+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
+		bra.s	.dofm
+
+.cpsg3
+	endif
+
+		cmp.b	#ctPSG4,mPSG3+cType.w	; check if PSG3 channel is in PSG4 mode
+		bne.s	.dofm			; if not, skip
+		move.b	mPSG3+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
+		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
+; ---------------------------------------------------------------------------
 ; The FM instruments need to be updated! Since this process includes volume
 ; updates, they do not need to be done later...
 ; ---------------------------------------------------------------------------
 
+.dofm
 		lea	mFM1.w,a1		; start at music FM1
 		moveq	#Mus_FM-1,d0		; load FM channel count to d0
 	if FEATURE_MODTL
@@ -822,25 +860,6 @@ dcBackup:
 	endif
 		add.w	#cSize,a1		; advance to next channel
 		dbf	d0,.fmloop		; loop for all FM channels
-; ---------------------------------------------------------------------------
-; Special logic to handle PSG4
-; ---------------------------------------------------------------------------
-
-		move.b	#$FF,dPSG.l		; mute PSG4
-	if FEATURE_PSG4
-		tst.b	mPSG4.w			; check if PSG4 is running
-		bpl.s	.cpsg3			; if not, skip
-		move.b	mPSG4+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
-		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
-		rts
-
-.cpsg3
-	endif
-
-		cmp.b	#ctPSG4,mPSG3+cType.w	; check if PSG3 channel is in PSG4 mode
-		bne.s	locret_Backup		; if not, skip
-		move.b	mPSG3+cStatPSG4.w,dPSG.l; update PSG4 status to PSG port
-		bset	#cfbVol,mPSG4+cFlags.w	; set volume update flag
 
 	elseif safe=1
 		AMPS_Debug_dcBackup
@@ -858,12 +877,21 @@ dcVoice:
 		move.b	(a2)+,d4		; load voice/sample/volume envelope from tracker to d1
 		move.b	d4,cVoice(a1)		; save to channel
 
-	if FEATURE_DACFMVOLENV
-		if safe=1
-			AMPS_Debug_dcVoiceEnv	; warn user if DAC & FM volume envelopes are enabled. This behaviour can be removed
-		endif				; for better integration of FM/DAC tracker code with PSG channels.
-	else
 		tst.b	cType(a1)		; check if this is a PSG channel
+	if FEATURE_PSGADSR
+		bpl.s	.noPSG			; branch if not
+
+		lsl.w	#3,d4			; multiply offset by 8
+		lea	dBankADSR(pc),a4	; load ADSR bank address to a4
+		bset	#cfbVol,(a1)		; force volume update
+
+		move.w	#$7F00,d5		; prepare d5 with the volume
+		move.b	(a4,d4.w),d5		; load the mode to d5
+		move.w	d5,(a3)			; save volume and flags to ADSR
+		rts
+
+.noPSG
+	else
 		bmi.s	locret_Backup		; if is, skip
 	endif
 
@@ -1224,7 +1252,7 @@ dUpdateVoiceFM3:
 
 dcStop:
 		and.b	#$FF-(1<<cfbHold)-(1<<cfbRun),(a1); clear hold and running tracker flags
-	dStopChannel	0			; stop channel operation
+	dStopChannel	-1			; stop channel operation
 
 	if FEATURE_FM3SM
 		btst	#ctbFM3sm,cType(a1)	; is this FM3 in special mode?

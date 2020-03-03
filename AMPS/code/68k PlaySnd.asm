@@ -634,6 +634,12 @@ dPlaySnd_SFX:
 		cmp.b	cPrio(a1),d5		; check if this sound effect has higher priority
 		blo.s	.skip			; if not, we can not override it
 
+	if FEATURE_PSGADSR
+		lea	dSFXADSRtbl(pc),a3	; get PSG ADSR table address to a3
+		move.w	(a3,d3.w),a3		; load the PSG ADSR entry this channel uses
+		move.w	#$7F00|admNormal|adpAttack,(a3); set to default value
+	endif
+
 		move.w	(a5,d3.w),a3		; get the music channel we should override
 		bset	#cfbInt,(a3)		; override music channel with sound effect
 		ori.b	#$1F,d4			; add volume update and max volume to channel type
@@ -712,6 +718,18 @@ dPlaySnd_SFX:
 ; ---------------------------------------------------------------------------
 ; pointers for music channels SFX can override and addresses of SFX channels
 ; ---------------------------------------------------------------------------
+
+	if FEATURE_PSGADSR
+dSFXADSRtbl:
+		dc.w mADSRSFX+aSFXPSG1		; SFX PSG1
+		dc.w mADSRSFX+aSFXPSG2		; SFX PSG2
+		dc.w mADSRSFX+aSFXPSG3		; SFX PSG3
+		if FEATURE_PSG4
+			dc.w mADSRSFX+aSFXPSG4	; SFX PSG4
+		else
+			dc.w mADSRSFX+aSFXPSG3	; SFX PSG4
+		endif
+	endif
 
 dSFXoffList:	dc.w mSFXFM3			; SFX FM3
 		dc.w mSFXDAC1			; SFX DAC1
@@ -799,6 +817,7 @@ dPlaySnd_StopSFX:
 .notrack
 		add.w	#cSizeSFX,a1		; go to next channel
 		dbf	d0,.loop		; repeat for each channel
+	dResetADSR	a4, d6, 2		; reset ADSR data for PSG SFX
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -828,6 +847,7 @@ dStopMusic:
 		lea	mVctMus.w,a4		; load driver RAM start to a1
 		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
 	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop
+	dResetADSR	a4, d6, 3		; reset ADSR data for PSG
 
 	if safe=1
 		clr.b	msChktracker.w		; if in safe mode, also clear the check tracker variable!
