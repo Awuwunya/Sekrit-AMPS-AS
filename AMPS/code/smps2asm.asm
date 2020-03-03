@@ -117,7 +117,10 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 ;   decaydelta -> How fast to decay. 2.6 fixed point format
 ;   releasedelta -> How fast to release. 2.6 fixed point format
 
-spADSR		macro mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
+spADSR		macro name, mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
+a{"name"} :=	sPatNum
+sPatNum :=	sPatNum+1
+
 	dc.b mode, 0
 	dc.b atkdelta, atkvol, decaydelta, decayvol, releasedelta
 	dc.b 0

@@ -9,7 +9,7 @@
 	sStop
 
 .PSG1
-	sVoice		$00
+	sADSR		aNone
 
 .loop
 	dc.b nA1, $10

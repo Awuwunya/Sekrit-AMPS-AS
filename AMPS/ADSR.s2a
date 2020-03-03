@@ -1,3 +1,4 @@
 dBankADSR:
-	spADSR	admNormal,	$00, $68, $10, $10, $23
-	spADSR	admImm,		$00, $FF, $00, $FF, $FF
+sPatNum :=	0
+	spADSR	None, admImm,		$00, $FF, $00, $FF, $FF		; $00 - default voice (immediate rise and fall)
+;	spADSR	Test, admNormal,	$00, $68, $10, $10, $23		; $01 - test voice (unused)
