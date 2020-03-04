@@ -1321,7 +1321,16 @@ dcStop:
 		bpl.s	.exit			; if not, branch
 
 		bclr	#cfbInt,(a4)		; channel is not interrupted anymore
-		bset	#cfbRest,(a4)		; reset sfx override flag
+		bset	#cfbRest,(a4)		; set channel resting
+
+	if FEATURE_PSGADSR
+		cmp.w	#mSFXPSG3,a1		; check if this was SFX PSG3 channel
+		bne.s	.nopsg3			; if not, branch
+		bclr	#cfbInt,mPSG4+cFlags.w	; channel is not interrupted anymore
+		bset	#cfbRest,mPSG4+cFlags.w	; set channel resting
+
+.nopsg3
+	endif
 
 		cmp.b	#ctPSG4,cType(a4)	; check if this channel is in PSG4 mode
 		bne.s	.exit			; if not, skip

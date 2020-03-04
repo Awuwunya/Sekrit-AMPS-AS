@@ -635,9 +635,9 @@ dPlaySnd_SFX:
 		blo.s	.skip			; if not, we can not override it
 
 	if FEATURE_PSGADSR
-		lea	dSFXADSRtbl(pc),a3	; get PSG ADSR table address to a3
+		lea	dSFXADSRtbl-8(pc),a3	; get PSG ADSR table address to a3
 		move.w	(a3,d3.w),a3		; load the PSG ADSR entry this channel uses
-		move.w	#$7F00|admNormal|adpAttack,(a3); set to default value
+		move.w	#$7F00|admNormal|adpRelease,(a3); set to default value
 	endif
 
 		move.w	(a5,d3.w),a3		; get the music channel we should override
@@ -648,6 +648,10 @@ dPlaySnd_SFX:
 		cmpi.b	#ctPSG3|$1F,d4		; check if we sent command about PSG3
 		bne.s	.clearCh		; if not, skip
 		move.b	#ctPSG4|$1F,dPSG.l	; send volume mute command for PSG4 to PSG
+
+	if FEATURE_PSGADSR
+		bset	#cfbInt,mPSG4+cFlags.w	; override music PSG4 too
+	endif
 
 .clearCh
 		move.w	a1,a3			; copy sound effect channel RAM pointer to a3

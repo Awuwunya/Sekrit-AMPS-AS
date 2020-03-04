@@ -357,10 +357,20 @@ dEnvCommandTL:
 
 	if FEATURE_PSGADSR
 dProcessADSR:
-		clr.b	d5			; clear low byte of d5
 		moveq	#0,d4
 		move.b	cADSR(a1),d4		; load ADSR to d4
+		bne.s	.normal			; if 0, emulate default behaviour
+		btst	#cfbRest,(a1)		; check if resting
+		beq.s	.rts			; if not, do not add to volume
+		moveq	#$7F,d1			; set to max volume
+
+.rts
+		rts
+; ---------------------------------------------------------------------------
+
+.normal
 		lsl.w	#3,d4			; multiply offset by 8
+		clr.b	d5			; clear low byte of d5
 
 		moveq	#adpMask,d3		; load bits to keep to d4
 		and.b	adFlags(a3),d3		; get only flags to d3
