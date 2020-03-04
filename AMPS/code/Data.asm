@@ -4,7 +4,7 @@
 ; make it easier to debug built ROMS! If you would like easier
 ; assistance from Natsumi, please keep this section intact!
 ; ---------------------------------------------------------------------------
-	dc.b "AMPS-x1.1"		; ident str
+	dc.b "AMPS-x1.2"		; ident str
 
 	if safe
 		dc.b "s"		; safe mode enabled
@@ -15,6 +15,14 @@
 
 	if FEATURE_FM6
 		dc.b "F6"		; FM6 enabled
+	endif
+
+	if FEATURE_PSG4
+		dc.b "P4"		; PSG4 enabled
+	endif
+
+	if FEATURE_PSGADSR
+		dc.b "PA"		; PSG ADSR enabled
 	endif
 
 	if FEATURE_SFX_MASTERVOL
@@ -64,6 +72,7 @@
 __mus :=	MusOff
 
 MusicIndex:
+	ptrMusic Test, $00
 	ptrMusic EHZ, $42, CPZ, $00, ARZ, $00, CNZ, $98, HTZ, $22, MCZ, $2A
 	ptrMusic OOZ, $10, MTZ, $00, SCZ, $85, WFZ, $58, DEZ, $80, HPZ, $00
 	ptrMusic EHZ2P, $85, CNZ2P, $23, MCZ2P, $00

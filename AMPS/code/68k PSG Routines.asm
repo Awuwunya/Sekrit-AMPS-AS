@@ -69,6 +69,8 @@ dAMPSdoPSG4SFX:
 		beq.s	.update			; if timed out, update channel
 
 		jsr	dEnvelopePSG(pc)	; run envelope program
+
+.next
 		jmp	dCheckTracker(pc)	; after that, process SFX DAC channels
 
 .update
@@ -93,7 +95,6 @@ dAMPSdoPSG4SFX:
 		jsr	dEnvelopePSG(pc)	; run envelope program
 	endif
 
-.next
 	; continue to check tracker and end loop
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -115,7 +116,6 @@ dCheckTracker:
 ; ---------------------------------------------------------------------------
 
 dAMPSdoPSG:
-	clr.w	-$1002.w
 		moveq	#Mus_PSG-(FEATURE_PSG4<>0)-1,d0; get total number of music PSG channels to d0
 	if FEATURE_PSGADSR
 		lea	mADSR-adSize.w,a3	; load PSG ADSR SFX data to a3
@@ -204,7 +204,8 @@ dAMPSdoPSG4:
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
 		add.b	d1,d1			; double d1
-		jsr	dNotesPSG4(pc,d1.w)	; execute specific code for note
+		lea	dNotesPSG4(pc),a4	; load notes table to a4
+		jsr	(a4,d1.w)		; execute specific code for note
 
 		move.b	(a2)+,d1		; check if next note is a timer
 		bpl.s	.timer			; if yes, handle timer
@@ -253,12 +254,33 @@ dNotesPSG4:
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 		move.w	#-1,cFreq(a1)		; set invalid PSG frequency
 
-		if FEATURE_PSGADSR
-			jmp	dKeyOffPSG(pc)	; key off PSG channel
-		else
+		if FEATURE_PSGADSR=0
 			jmp	dMutePSGmus(pc)	; mute PSG channel
 		endif
 ; ---------------------------------------------------------------------------
+	endif
+
+	if FEATURE_PSGADSR
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Routine for keying off PSG
+;
+; input:
+;   a1 - Channel to operate on
+;   a3 - Channel ADSR data
+;   a4 - Used to reference phase table
+; thrash:
+;   d3 - Used to calculate the volume command
+; ---------------------------------------------------------------------------
+
+dKeyOffPSG:
+		bset	#cfbVol,(a1)		; force volume update
+		moveq	#admMask,d3		; prapre only the mode bits
+		and.b	adFlags(a3),d3		; get mode bits from flags
+
+		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
+		move.b	2(a4,d3.w),adFlags(a3)	; load new flags from table
+		rts
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -275,29 +297,7 @@ dUpdateFreqPSG:
 		move.w	cFreq(a1),d2		; get channel base frequency to d2
 		bpl.s	dUpdateFreqPSG4		; if it was not rest frequency, branch
 		bset	#cfbRest,(a1)		; set channel resting flag
-
-	if FEATURE_PSGADSR
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Routine for keying off PSG
-;
-; input:
-;   a1 - Channel to operate on
-;   a3 - Channel ADSR data
-;   a4 - Used to reference phase table
-; thrash:
-;   d3 - Used to calculate the volume command
-; ---------------------------------------------------------------------------
-
-dKeyOffPSG:
-		moveq	#admMask,d3		; prapre only the mode bits
-		and.b	adFlags(a3),d3		; get mode bits from flags
-
-		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
-		move.b	2(a4,d3.w),adFlags(a3)	; load new flags from table
-		bset	#cfbVol,(a1)		; force volume update
-	endif
-		rts
+		bra.s	dKeyOffPSG	; TODO: why tf is this needed???
 ; ===========================================================================
 
 dUpdateFreqPSG4:

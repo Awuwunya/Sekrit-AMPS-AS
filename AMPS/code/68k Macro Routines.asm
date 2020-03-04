@@ -340,9 +340,12 @@ dProcNote	macro sfx, chan
 .noporta
 	endif
 
-	if (chan=1)&FEATURE_PSGADSR
+	if ((chan=1)|(chan=4))&FEATURE_PSGADSR
 		btst	#cfbHold,(a1)		; check if note is held
 		bne.w	.endpn			; if yes, skip dis
+		btst	#cfbRest,(a1)		; check if resting
+		bne.s	.noadsrf		; if yes, skip dis
+
 		moveq	#admMask,d4		; prepare mode bits to d4
 		and.b	adFlags(a3),d4		; get only mode to d4
 
@@ -363,7 +366,7 @@ dProcNote	macro sfx, chan
 .noadsrf
 	endif
 
-	if FEATURE_MODULATION|(sfx=0)|(chan=1)
+	if FEATURE_MODULATION|(sfx=0)|(chan=1)|(chan=4)
 		btst	#cfbHold,(a1)		; check if we are holding
 		if ((chan==0)&(FEATURE_MODTL<>0))
 			bne.w	.endpn		; if we are, branch
@@ -376,7 +379,7 @@ dProcNote	macro sfx, chan
 		move.b	cGateMain(a1),cGateCur(a1); copy note timeout value
 	endif
 
-	if FEATURE_DACFMVOLENV|(chan=1)
+	if FEATURE_DACFMVOLENV|(chan=1)|(chan=4)
 		clr.b	cEnvPos(a1)		; clear envelope position if PSG channel
 	endif
 

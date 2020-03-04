@@ -1,20 +1,24 @@
 	sHeaderInit
 	sHeaderTempo	$01, $00
-	sHeaderCh	$00, $01
+	sHeaderCh	$00, $04
 	sHeaderDAC	.DAC
 	sHeaderDAC	.DAC
 	sHeaderPSG	.PSG1, $00, $00, $00, vNone
+	sHeaderPSG	.DAC, $00, $00, $00, vNone
+	sHeaderPSG	.DAC, $00, $00, $00, vNone
+	sHeaderPSG	.PSG4, $00, $00, $00, vNone
 
 .DAC
 	sStop
 
 .PSG1
-	sADSR		aNone
+	sVoice		aNone
 
 .loop
-	dc.b nA1, $10
-	dc.b nRst, $10
-	dc.b nE1, $10
-	dc.b nRst, $10
 	sStop
 	sJump		.loop
+
+.PSG4
+	sVoice		aNone
+	dc.b nWhite10, $08, nRst, nRst
+	sJump		.PSG4

@@ -100,7 +100,7 @@ FinalBoss_Loop3:
 	sJump		FinalBoss_Loop1
 
 FinalBoss_Call1:
-	dc.b nRst, $60, nRst, nRst, $0C, nG6, $06, nA6
+	dc.b nRst, $60, nRst, $6C, nG6, $06, nA6
 	dc.b nE6, $48, nRst, $0C, nG6, $06, nAb6, nE6
 	dc.b $48
 	sRet
@@ -286,7 +286,7 @@ FinalBoss_Loop12:
 	sLoop		$00, $05, FinalBoss_Loop12
 
 FinalBoss_Loop13:
-	dc.b nRst, $60, nRst, nRst, $0C, nA5, $06, nB5
+	dc.b nRst, $60, nRst, $6C, nA5, $06, nB5
 	dc.b nC6, $48, nRst, $0C, nB5, $06, nC6, nD6
 	dc.b $48
 	sLoop		$00, $02, FinalBoss_Loop13
