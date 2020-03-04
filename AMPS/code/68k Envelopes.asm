@@ -41,11 +41,13 @@ dModEnvProg2:
 		ble.s	dModEnvCommand		; if it is handle it
 
 .value
+		addq.b	#1,cModEnvPos(a1)	; increment envelope position
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	locret_ModEnvProg	; if yes, skip this shiz
+
 		move.b	cModEnvSens(a1),d5	; load sensitivity to d1 (unsigned value - effective range is ~ -$7000 to $8000)
 		addq.w	#1,d5			; increment sensitivity by 1 (range of 1 to $100)
 		muls	d5,d4			; signed multiply loaded value with sensitivity
-
-		addq.b	#1,cModEnvPos(a1)	; increment envelope position
 		add.w	d4,d2			; add the frequency to channel frequency
 
 locret_ModEnvProg:

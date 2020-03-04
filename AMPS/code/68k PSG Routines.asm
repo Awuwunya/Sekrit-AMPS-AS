@@ -32,7 +32,7 @@ dAMPSnextPSGSFX:
 		jmp	dAMPSdoPSG4SFX(pc)	; after that, check tracker and end loop
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker				; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. Branch
@@ -72,7 +72,7 @@ dAMPSdoPSG4SFX:
 		jmp	dCheckTracker(pc)	; after that, process SFX DAC channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker	4			; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -149,7 +149,7 @@ dAMPSnextPSG:
 	endif
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker				; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -199,7 +199,7 @@ dAMPSdoPSG4:
 		jmp	dAMPSdoDACSFX(pc)	; after that, process SFX DAC channels
 
 .update
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRest),(a1); clear hold and rest flags
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest, hold and frequency freeze flags
 	dDoTracker	4			; process tracker
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
@@ -301,20 +301,22 @@ dKeyOffPSG:
 ; ===========================================================================
 
 dUpdateFreqPSG4:
-		move.b	cDetune(a1),d6		; load detune value to d6
-		ext.w	d6			; extend to word
-		add.w	d6,d2			; add to channel base frequency to d2
-
 	if FEATURE_MODENV
 		jsr	dModEnvProg(pc)		; process modulation envelope
 	endif
+
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	dUpdateFreqPSG2		; if yes, do not add these frequencies in
+		move.b	cDetune(a1),d6		; load detune value to d6
+		ext.w	d6			; extend to word
+		add.w	d6,d2			; add to channel base frequency to d2
 
 	if FEATURE_PORTAMENTO
 		add.w	cPortaFreq(a1),d2	; add portamento speed to frequency
 	endif
 
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if channel is modulating
+		tst.b	cModSpeed(a1)		; check if channel is modulating
 		beq.s	dUpdateFreqPSG2		; if not, branch
 		add.w	cModFreq(a1),d2		; add modulation frequency offset to d2
 	endif

@@ -69,7 +69,7 @@ cFreq		ds.w 1		; channel base frequency
 cModDelay =	*		; delay before modulation starts
 cMod		ds.l 1		; modulation data address
 cModFreq	ds.w 1		; modulation frequency offset
-cModSpeed	ds.b 1		; number of frames til next modulation step
+cModSpeed	ds.b 1		; number of frames til next modulation step. 0 means modulation is disabled.
 cModStep	ds.b 1		; modulation frequency offset per step
 cModCount	ds.b 1		; number of modulation steps until reversal
 	endif
@@ -111,7 +111,7 @@ cfbMode =	*		; set if in pitch mode, clear if in sample mode. DAC only
 cfbRest		ds.b 1		; set if channel is resting. FM and PSG only
 cfbInt		ds.b 1		; set if interrupted by SFX. Music only
 cfbHold		ds.b 1		; set if playing notes does not trigger note-on's
-cfbMod		ds.b 1		; set if modulation is enabled
+cfbFreqFrz	ds.b 1		; set if note frequency should be "frozen". Various things do not affect frequency
 cfbCond		ds.b 1		; set if ignoring most tracker commands
 cfbVol		ds.b 1		; set if channel should update volume
 cfbRun =	$07		; set if channel is running a tracker

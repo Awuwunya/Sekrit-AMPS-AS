@@ -31,7 +31,7 @@ dAMPSnextDAC:
 		jmp	dAMPSdoFM(pc)		; after that, process music FM channels
 
 .update
-		and.b	#$FF-(1<<cfbHold),(a1)	; clear hold flag
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz),(a1); clear hold and frequency freeze flags
 	dDoTracker				; process tracker
 		moveq	#0,d4			; clear rest flag
 		tst.b	d1			; check if note is being played
@@ -174,20 +174,22 @@ dUpdateFreqOffDAC:
 		move.w	cFreq(a1),d2		; get channel base frequency to d2
 		add.w	(a2)+,d2		; add sample frequency offset to d2
 
-		move.b	cDetune(a1),d3		; get detune value
-		ext.w	d3			; extend to word
-		add.w	d3,d2			; add it to d2
-
 	if FEATURE_MODENV
 		jsr	dModEnvProg(pc)		; process modulation envelope
 	endif
+
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	dUpdateFreqDAC3		; if yes, do not add these frequencies in
+		move.b	cDetune(a1),d3		; get detune value
+		ext.w	d3			; extend to word
+		add.w	d3,d2			; add it to d2
 
 	if FEATURE_PORTAMENTO
 		add.w	cPortaFreq(a1),d2	; add portamento speed to frequency
 	endif
 
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if channel is modulating
+		tst.b	cModSpeed(a1)		; check if channel is modulating
 		beq.s	dUpdateFreqDAC3		; if not, branch
 		add.w	cModFreq(a1),d2		; add modulation frequency offset to d2
 	endif
@@ -261,7 +263,7 @@ dAMPSdoDACSFX:
 		jmp	dAMPSdoFMSFX(pc)	; after that, process SFX FM channels
 
 .update
-		and.b	#$FF-(1<<cfbHold),(a1)	; clear hold flag
+		and.b	#$FF-(1<<cfbHold)-(1<<cfbFreqFrz),(a1); clear hold and frequency freeze flags
 	dDoTracker				; process tracker
 		moveq	#0,d4			; clear rest flag
 		tst.b	d1			; check if note is being played

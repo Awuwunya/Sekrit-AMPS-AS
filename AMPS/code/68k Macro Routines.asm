@@ -61,9 +61,17 @@ dNoteToutPSG	macro	addr
 ; ---------------------------------------------------------------------------
 
 dCalcFreq	macro
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		beq.s	.nofrz			; if not, branch
+		move.w	cFreq(a1),d2		; load channel base frequency to d2
+		bra.s	.frz
+
+.nofrz
 		move.b	cDetune(a1),d2		; get detune value to d2
 		ext.w	d2			; extend to word
 		add.w	cFreq(a1),d2		; add channel base frequency to it
+
+.frz
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -117,6 +125,8 @@ dPortamento	macro jump,loop,type
 		move.w	d5,cPortaFreq(a1)	; save portamento frequency back
 
 .nochk
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	.nowrap			; if yes, do not bother with this
 		add.w	d5,d2			; add it to the current pitch
 
 		if (type=0)|(type=1)
@@ -155,7 +165,7 @@ dPortamento	macro jump,loop,type
 
 dModulate	macro jump,loop,type
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if modulation is active
+		tst.b	cModSpeed(a1)		; check if modulation is active
 		beq.s	.noret			; if not, update volume and return
 		tst.b	cModDelay(a1)		; check if there is delay left
 		beq.s	.started		; if not, modulate!
@@ -185,12 +195,14 @@ dModulate	macro jump,loop,type
 		neg.b	cModStep(a1)		; negate step amount
 
 .norev
-		subq.b	#1,cModCount(a1)	; decrease step counter
 		move.b	cModStep(a1),d5		; get step offset into d5
 		ext.w	d5			; extend to word
-
 		add.w	cModFreq(a1),d5		; add modulation frequency to it
 		move.w	d5,cModFreq(a1)		; save as the modulation frequency
+
+		subq.b	#1,cModCount(a1)	; decrease step counter
+		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
+		bne.s	.porta			; if yes, do not bother with this
 		add.w	d5,d2			; add to channel base frequency
 
 .porta
@@ -402,7 +414,7 @@ dProcNote	macro sfx, chan
 	endif
 
 	if FEATURE_MODULATION
-		btst	#cfbMod,(a1)		; check if modulation is enabled
+		tst.b	cModSpeed(a1)		; check if modulation is enabled
 		beq.s	.endpn			; if not, branch
 
 		move.l	cMod(a1),a4		; get modulation data address

@@ -328,15 +328,18 @@ saTranspose	macro val
 	dc.b $E4, val
     endm
 
-; E5xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-ssTickMulCh	macro val
+; E5xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+ssTickMul	macro val
 	dc.b $E5, val-1
     endm
 
-; E6xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
-ssTickMul	macro val
-	dc.b $E6, val-1
+; FF48xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
+ssTickMulCh	macro val
+	dc.b $FF, $48, val-1
     endm
+
+; E6 - Freeze frequency for the next note (FREQ_FREEZE)
+sFqFz =		$E6
 
 ; E7 - Do not attack of next note (HOLD)
 sHold =		$E7
@@ -422,6 +425,10 @@ sModAMPS	macro wait, speed, step, count
 
 sModData	macro wait, speed, step, count
 	dc.b speed, count, wait, step
+
+	if speed=0
+		warning "Modulation speed is 0! This is not valid for modulation and will instead disable it."
+	endif
     endm
 
 ; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)

@@ -27,8 +27,8 @@ dCommands:
 	bra.w	dcaDetune	; E2 - Add xx to channel frequency displacement (DETUNE)
 	bra.w	dcsTransp	; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	bra.w	dcaTransp	; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	bra.w	dcsTmulCh	; E5 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-	bra.w	dcsTmul		; E6 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcsTmul		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	bra.w	dcVoice		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
 	bra.w	dcsTempoShoes	; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
@@ -90,7 +90,7 @@ dCommands:
 	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
 	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
-	bra.w	*		; FF 48 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	dcsTmulCh	; FF 48 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
 	bra.w	*		; FF 4C - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 
 	if FEATURE_MODTL
@@ -108,8 +108,8 @@ tlmod	macro name
 	endif
 
 	if safe=1
-		bra.w	dcFreeze	; FF 80 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
-		bra.w	dcTracker	; FF 84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+		bra.w	dcFreeze	; FF 90 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
+		bra.w	dcTracker	; FF 94 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -131,8 +131,8 @@ dcskip	macro amount
 	dcskip	1		; E2 - Add xx to channel frequency displacement (DETUNE)
 	dcskip	1		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	dcskip	1		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	dcskip	1		; E5 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-	dcskip	1		; E6 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	dcskip	1		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	dcskip	1		; E8 - Add xx to music tempo (TEMPO - TEMPO_ADD)
 	dcskip	1		; E9 - Set music tempo to xx (TEMPO - TEMPO_SET)
@@ -314,6 +314,14 @@ dcsTmul:
 
 dcHold:
 		bchg	#cfbHold,(a1)		; flip the channel hold flag
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for enabling or disabling the frequency freeze flag
+; ---------------------------------------------------------------------------
+
+dcFqFz:
+		bchg	#cfbFreqFrz,(a1)	; flip the channel frequency freeze flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -595,10 +603,7 @@ dcMod68K:
 
 		move.b	(a2)+,cModDelay(a1)	; load modulation delay from tracker to channel
 		move.b	(a2)+,cModStep(a1)	; load modulation step offset from tracker to channel
-	; continue to enabling modulation
-
-	elseif safe=1
-		AMPS_Debug_dcModulate		; display an error if disabled
+		rts
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -607,16 +612,17 @@ dcMod68K:
 
 dcModOn:
 	if FEATURE_MODULATION
-		bset	#cfbMod,(a1)		; enable modulation
-		rts
+		tst.b	cModSpeed(a1)		; check if already enabled
+		bne.s	.rts			; if so, do not mess with the settings
+		move.b	#1,cModSpeed(a1)	; enable modulation (step immediately)
 
-	elseif safe=1
-		AMPS_Debug_dcModulate		; display an error if disabled
+.rts
+		rts
 	endif
 
 dcModOff:
 	if FEATURE_MODULATION
-		bclr	#cfbMod,(a1)		; disable modulation
+		clr.b	cModSpeed(a1)		; disable modulation
 		rts
 
 	elseif safe=1
