@@ -29,6 +29,7 @@ FEATURE_PSG4 =		1	; set to 1 to enable a separate PSG4 channel
 FEATURE_PSGADSR =	1	; set to 1 to enable ADSR for PSG
 FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
+FEATURE_STACK_DEPTH =	3	; set the number of slots in music channel stack. At least 3 is recommended
 
 ; Select the tempo algorith.
 ; 0 = Overflow method.
@@ -98,7 +99,7 @@ cGateCur	ds.b 1		; frame counter to note off. Music only
 cGateMain	ds.b 1		; copy of frame counter to note off. Music only
 cStack		ds.b 1		; channel stack pointer. Music only
 		ds.b 1		; unused. Music only
-		ds.l 3		; channel stack data. Music only
+		ds.l FEATURE_STACK_DEPTH; channel stack data. Music only
 		even
 cSize =		*		; size of each music track
 ; ===========================================================================
