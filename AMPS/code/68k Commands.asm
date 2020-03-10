@@ -134,9 +134,9 @@ dcskip	macro amount
 	dcskip	1		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
 	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
-	dcskip	1		; E8 - Add xx to music tempo (TEMPO - TEMPO_ADD)
-	dcskip	1		; E9 - Set music tempo to xx (TEMPO - TEMPO_SET)
-	dcskip	1		; EA - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
+	dcskip	1		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
+	dcskip	1		; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+	dcskip	1		; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
 	dcskip	0		; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
 	dcskip	0		; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
 	dcskip	1		; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
@@ -1290,11 +1290,11 @@ dcStop:
 		bpl.s	.fixch			; if not, branch
 
 		bset	#cfbVol,(a1)		; set update volume flag (cleared by dUpdateVoiceFM)
-		bclr	#cfbInt,(a1)		; reset sfx override flag
+		bclr	#cfbInt,(a1)		; channel is not interrupted anymore
 		btst	#ctbDAC,cType(a1)	; check if the channel is a DAC channel
 		bne.s	.fixch			; if yes, skip
 
-		bset	#cfbRest,(a1)		; Set channel resting flag
+		bset	#cfbRest,(a1)		; set channel resting
 		moveq	#0,d4
 		move.b	cVoice(a1),d4		; load FM voice ID of the channel to d4
 		jsr	dUpdateVoiceFM(pc)	; send FM voice for this channel

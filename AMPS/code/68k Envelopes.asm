@@ -207,7 +207,10 @@ dEnvCommand:
 .stop
 		bset	#cfbRest,(a1)		; set channel resting bit
 	dStopChannel	0			; stop channel operation
+
+	if FEATURE_PSGADSR=0
 		moveq	#0,d4			; set Z flag to 1
+	endíf
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -444,25 +447,25 @@ dProcessADSR:
 
 dPhaseTableADSR:
 	; normal mode:
-		dc.b admNormal|adpDecay, admNormal|adpSustain, admNormal|adpRelease, adpAttack|admNormal
+		dc.b admNormal|adpDecay, admNormal|adpSustain, admNormal|adpRelease, admNormal|adpAttack
 
 	; noattack mode:
-		dc.b admNoAttack|adpDecay, admNoAttack|adpSustain, admNoAttack|adpRelease, adpAttack|admNoAttack
+		dc.b admNoAttack|adpDecay, admNoAttack|adpSustain, admNoAttack|adpRelease, admNoAttack|adpAttack
 
 	; reattack mode:
-		dc.b admReAttack|adpAttack, admReAttack|adpAttack, admReAttack|adpAttack, adpAttack|admReAttack
+		dc.b admReAttack|adpAttack, admReAttack|adpAttack, admReAttack|adpAttack, admReAttack|adpAttack
 
 	; nodecay mode:
-		dc.b admNoDecay|adpSustain, admNoDecay|adpSustain, admNoDecay|adpRelease, adpAttack|admNoDecay
+		dc.b admNoDecay|adpSustain, admNoDecay|adpSustain, admNoDecay|adpRelease, admNoDecay|adpAttack
 
 	; noattack mode:
-		dc.b admReDecay|adpDecay, admReDecay|adpDecay, admReDecay|adpDecay, adpAttack|admReDecay
+		dc.b admReDecay|adpDecay, admReDecay|adpDecay, admReDecay|adpDecay, admReDecay|adpAttack
 
 	; norelease mode:
-		dc.b admNoRelease|adpDecay, admNoRelease|adpSustain, adpAttack|admNoRelease, adpAttack|admNoRelease
+		dc.b admNoRelease|adpDecay, admNoRelease|adpSustain, admNoRelease|adpAttack, admNoRelease|adpAttack
 
 	; attackrelease mode:
-		dc.b admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpRelease, adpAttack|admAttRel
+		dc.b admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpAttack
 
 	; unused
 		dc.b adpSustain|admImm, adpSustain|admImm, adpRelease|admImm, adpSustain|admImm

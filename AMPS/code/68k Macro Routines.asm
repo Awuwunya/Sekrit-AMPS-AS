@@ -242,7 +242,7 @@ dGenLoops	macro	mode,jump,loop,type
 ; Macro for processing the tracker
 ; ---------------------------------------------------------------------------
 
-dDoTracker	macro nf
+dDoTracker	macro	nf
 		move.l	cData(a1),a2		; grab tracker address
 	if safe=1
 		AMPS_Debug_TrackUpd		; check if this address is valid
@@ -267,7 +267,7 @@ dDoTracker	macro nf
 ; Macro for playing a note, and setting up for it (software updates only)
 ; ---------------------------------------------------------------------------
 
-dProcNote	macro sfx, chan
+dProcNote	macro	sfx, chan
 		move.l	a2,cData(a1)		; save tracker address
 		move.b	cLastDur(a1),cDuration(a1); copy stored duration
 
@@ -370,7 +370,7 @@ dProcNote	macro sfx, chan
 
 	if FEATURE_MODULATION|(sfx=0)|(chan=1)|(chan=4)
 		btst	#cfbHold,(a1)		; check if we are holding
-		if ((chan==0)&(FEATURE_MODTL<>0))
+		if (chan=0)&(FEATURE_MODTL<>0)
 			bne.w	.endpn		; if we are, branch
 		else
 			bne.s	.endpn		; if we are, branch
@@ -391,7 +391,7 @@ dProcNote	macro sfx, chan
 	endif
 
 	; handle modulation for each TLmod
-	if ((chan==0)&(FEATURE_MODTL<>0))
+	if (chan=0)&(FEATURE_MODTL<>0)
 .op :=		0
 		rept 4
 .of :=			toSize*.op
@@ -465,8 +465,8 @@ dTrackNoteDAC	macro
 ; Macro for doing keying-on FM channel
 ; ---------------------------------------------------------------------------
 
-dKeyOnFM	macro x
-	if "x"==""
+dKeyOnFM	macro	sfx
+	if "sfx"==""
 		btst	#cfbInt,(a1)		; check if overridden by sfx
 		bne.s	.k			; if so, do not note on
 	endif

@@ -65,6 +65,8 @@ cVoice		ds.b 1		; YM2612 voice ID. FM only
 cDuration	ds.b 1		; current note duration
 cLastDur	ds.b 1		; last note duration
 cFreq		ds.w 1		; channel base frequency
+cVolEnv		ds.b 1		; volume envelope ID
+cEnvPos		ds.b 1		; volume envelope position
 
 	if FEATURE_MODULATION
 cModDelay =	*		; delay before modulation starts
@@ -80,9 +82,6 @@ cPortaSpeed	ds.b 1		; number of frames for each portamento to complete. 0 means 
 cPortaFreq	ds.w 1		; frequency offset for portamento.
 cPortaDisp	ds.w 1		; frequency displacement per frame for portamento.
 	endif
-
-cVolEnv		ds.b 1		; volume envelope ID
-cEnvPos		ds.b 1		; volume envelope position
 
 	if FEATURE_MODENV
 cModEnv		ds.b 1		; modulation envelope ID

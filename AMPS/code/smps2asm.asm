@@ -309,33 +309,33 @@ sPan		macro pan, ams, fms
     endm
 
 ; E1xx - Set channel frequency displacement to xx (DETUNE_SET)
-ssDetune	macro val
-	dc.b $E1, val
+ssDetune	macro detune
+	dc.b $E1, detune
     endm
 
 ; E2xx - Add xx to channel frequency displacement (DETUNE)
-saDetune	macro val
-	dc.b $E2, val
+saDetune	macro detune
+	dc.b $E2, detune
     endm
 
 ; E3xx - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
-ssTranspose	macro val
-	dc.b $E3, val
+ssTranspose	macro transp
+	dc.b $E3, transp
     endm
 
 ; E4xx - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-saTranspose	macro val
-	dc.b $E4, val
+saTranspose	macro transp
+	dc.b $E4, transp
     endm
 
 ; E5xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
-ssTickMul	macro val
-	dc.b $E5, val-1
+ssTickMul	macro tick
+	dc.b $E5, tick-1
     endm
 
 ; FF48xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-ssTickMulCh	macro val
-	dc.b $FF, $48, val-1
+ssTickMulCh	macro tick
+	dc.b $FF, $48, tick-1
     endm
 
 ; E6 - Freeze frequency for the next note (FREQ_FREEZE)
@@ -345,28 +345,28 @@ sFqFz =		$E6
 sHold =		$E7
 
 ; E8xx - Set patch/voice/sample to xx (INSTRUMENT - INS_C_FM / INS_C_PSG / INS_C_DAC)
-sVoice		macro val
-	dc.b $E8, val
+sVoice		macro voice
+	dc.b $E8, voice
     endm
 
 ; F2xx - Set volume envelope to xx (INSTRUMENT - INS_C_PSG) (FM_VOLENV / DAC_VOLENV)
-sVolEnv		macro val
-	dc.b $F2, val
+sVolEnv		macro env
+	dc.b $F2, env
     endm
 
 ; F3xx - Set modulation envelope to xx (MOD_ENV - MENV_GEN)
-sModEnv		macro val
-	dc.b $F3, val
+sModEnv		macro env
+	dc.b $F3, env
     endm
 
 ; E9xx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
-ssTempoShoes	macro val
-	dc.b $E9, val
+ssTempoShoes	macro tempo
+	dc.b $E9, tempo
     endm
 
 ; EAxx - Set music tempo to xx (TEMPO - TEMPO_SET)
-ssTempo		macro val
-	dc.b $EA, val
+ssTempo		macro tempo
+	dc.b $EA, tempo
     endm
 
 ; FF18xx - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)
@@ -379,12 +379,12 @@ saTempo		macro tempo
 	dc.b $FF,$1C, tempo
     endm
 
-; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
+; EB - Use sample DAC mode, where each note is a different sample (DAC_MODE - DACM_SAMP)
 sModeSampDAC	macro
 	dc.b $EB
     endm
 
-; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
+; EC - Use pitch DAC mode, where each note is a different pitch (DAC_MODE - DACM_NOTE)
 sModePitchDAC	macro
 	dc.b $EC
     endm
@@ -480,13 +480,13 @@ sRet		macro
     endm
 
 ; FAyyxx - Set communications byte yy to xx (SET_COMM - SPECIAL)
-sComm		macro num, val
-	dc.b $FA, num,val
+sComm		macro index, val
+	dc.b $FA, index,val
     endm
 
 ; FBxyzz - Get communications byte y, and compare zz with it using condition x (COMM_CONDITION)
-sCond		macro num, cond, val
-	dc.b $FB, num|(cond<<4),val
+sCond		macro index, cond, val
+	dc.b $FB, index|(cond<<4),val
     endm
 
 ; FC - Reset condition (COMM_RESET)
@@ -526,8 +526,8 @@ sSpinReset	macro
     endm
 
 ; FF20xyzz - Get RAM address pointer offset by y, compare zz with it using condition x (COMM_CONDITION - COMM_SPEC)
-sCondReg	macro off, cond, val
-	dc.b $FF,$20, off|(cond<<4),val
+sCondReg	macro index, cond, val
+	dc.b $FF,$20, index|(cond<<4),val
     endm
 
 ; FF24xx - Play another music/sfx (SND_CMD)

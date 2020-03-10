@@ -445,7 +445,6 @@ dUpdateVolPSG:
 	endif
 
 .send
-
 		cmpi.b	#$7F,d1			; check if volume is out of range
 		bls.s	.nocap			; if not, branch
 		moveq	#$7F,d1			; cap volume to silent
@@ -469,6 +468,10 @@ locret_UpdVolPSG:
 ; ---------------------------------------------------------------------------
 
 dMutePSGmus:
+	if FEATURE_PSGADSR
+		move.w	#$7F00|adpRelease,(a3)	; forcibly mute ADSR
+	endif
+
 		btst	#cfbInt,(a1)		; check if this is a SFX channel
 		bne.s	locret_MutePSG		; if yes, do not update
 
@@ -498,7 +501,7 @@ dFreqPSG:dc.w $03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03F7,$03BE,
 	dc.w  $0000								     ; Note (D2)
 dFreqPSG_:
 	if safe=1				; in safe mode, we have extra debug data
-.x := $100|((dFreqPSG_-dFreqPSG)/2)		; to check if we played an invalid note
+.x :=		$100|((dFreqPSG_-dFreqPSG)/2)	; to check if we played an invalid note
 		rept $80-((dFreqPSG_-dFreqPSG)/2); and if so, tell us which note it was
 			dc.w .x
 .x :=			.x+$101
