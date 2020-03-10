@@ -169,7 +169,7 @@ AMPS_Debug_Console_Channel:
 	Console.BreakLine
 	Console.WriteLine "%<pal1>Addr: %<pal0>%<.l a4 sym|split>%<pal2>%<symdisp>"
 
-; fmt: flag, type, pan, det, pitch, vol, tick, sample/voice, dur, lastdur, freq
+; fmt: flag, type, pan, det, pitch, vol, sample/voice, dur, lastdur, freq
 
 ; some AS is ASS code here!
 	move.b	cType(a1),d0
@@ -179,8 +179,7 @@ AMPS_Debug_Console_Channel:
 	move.b	cDetune(a1),d0
 	move.b	cPitch(a1),d1
 	move.b	cVolume(a1),d2
-	move.b	cTick(a1),d3
-	Console.Write	  "%<.b d0> %<.b d1> %<.b d2> %<.b d3> "
+	Console.Write	  "%<.b d0> %<.b d1> %<.b d2> "
 
 	move.b	cSample(a1),d0
 	move.b	cDuration(a1),d1
@@ -285,11 +284,11 @@ AMPS_Debug_Console_Main:
 	move.b	mContLast.w,d2
 	Console.WriteLine "%<.b d0> %<.b d1> %<.b d2>"
 
-	move.b	mTempoMain.w,d0
-	move.b	mTempoSpeed.w,d1
-	move.b	mTempoMain.w,d2
-	move.b	mTempoSpeed.w,d3
-	Console.WriteLine "%<pal1>Tempo:  %<pal2>%<.b d0> %<.b d1> %<.b d2> %<.b d3>"
+	move.w	mTempoMain.w,d0
+	move.w	mTempoSpeed.w,d1
+	move.w	mTempo.w,d2
+	move.w	mTempoAcc.w,d3
+	Console.WriteLine "%<pal1>Tempo:  %<pal2>%<.w d0> %<.w d1> %<.w d2> %<.w d3>"
 
 	move.b	mMasterVolFM.w,d0
 	move.b	mMasterVolDAC.w,d1

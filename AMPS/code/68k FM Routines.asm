@@ -81,6 +81,7 @@ dUpdateVolFM_SFX:
 		endif
 
 		move.b	cVolume(a1),d1		; load FM channel volume to d1
+		ext.w	d1			; extend it to word
 		bra.s	dUpdateVolFM3		; do NOT add the master volume!
 	endif
 
@@ -90,12 +91,12 @@ dUpdateVolFM:
 		bne.s	locret_MuteFM		; if is, do not update anything
 	endif
 
-		move.b	cVolume(a1),d1		; load FM channel volume to d1
-		add.b	mMasterVolFM.w,d1	; add master FM volume to d1
-	if FEATURE_MODTL=0
-		bpl.s	dUpdateVolFM3		; if we did not overflow, branch
-		moveq	#$7F,d1			; cap to silent volume
-	endif
+		move.b	mMasterVolFM.w,d1	; load FM master volume to d1
+		ext.w	d1			; extend to word
+
+		move.b	cVolume(a1),d4		; load channel volume to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d1			; add channel volume to d1
 
 dUpdateVolFM3:
 	if FEATURE_DACFMVOLENV
@@ -135,12 +136,7 @@ dUpdateVolFM2:
 		move.b	(a5,d4.w),d4		; get the value from table
 		move.b	d4,d6			; copy to d6
 		and.w	#7,d4			; mask out extra stuff
-
-		add.b	d4,d1			; add algorithm to Total Level carrier offset
-	if FEATURE_MODTL=0
-		bpl.s	.uwdone			; if we did not overflow, branch
-		moveq	#$7F,d1			; cap to silent volume
-	endif
+		add.w	d4,d1			; add algorithm to Total Level carrier offset
 
 .uwdone
 	endif
@@ -161,31 +157,35 @@ dUpdateVolFM2:
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d1,d5			; add carrier offset to loaded value
-	else
-		add.b	d1,d5			; add carrier offset to loaded value
-		bmi.s	.slot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
-
+		add.w	d1,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
 
 .noslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .slot
 	if FEATURE_MODTL
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 		add.w	#toSize,a3		; go to next operator
 	endif
+
+		cmp.w	#$7F,d5			; check if volume is out of range
+		bls.s	.nocap			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+
+.nocap
 		move.b	d5,-(a5)		; write total level to stack
 		dbf	d3,.tlloop		; repeat for each Total Level operator
 
@@ -217,23 +217,18 @@ dUpdateVolFM2:
 		add.w	d3,a4			; get the appropriate TL byte
 
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.smnoslot		; if slot operator bit was not set, branch
 
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d1,d5			; add carrier offset to loaded value
-	else
-		add.b	d1,d5			; add carrier offset to loaded value
-		bmi.s	.smslot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
+		add.w	d1,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.smslot
 	endif
 
 .smnoslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .smslot
@@ -241,9 +236,18 @@ dUpdateVolFM2:
 		move.w	d3,d4			; copy value to d4
 		add.w	d4,d4			; double offset
 		move.w	dModTLFM3(pc,d4.w),a3	; load the RAM address to use
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
+		cmp.w	#$80,d5			; check if volume is out of range
+		bls.s	.nocap2			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+
+.nocap2
 	CheckCue				; check that YM cue is valid
 	stopZ80
 	WriteYM1	dOpTLFM3(pc,d3.w), d5	; Total Level: Load correct operator
@@ -337,7 +341,7 @@ dAMPSnextFMSFX:
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 1, 0				; reset necessary channel memory
@@ -414,7 +418,7 @@ dAMPSnextFM:
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
-		jsr	dCalcDuration(pc)	; calculate duration
+		move.b	d1,cLastDur(a1)		; save as the new duration
 
 .pcnote
 	dProcNote 0, 0				; reset necessary channel memory

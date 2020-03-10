@@ -1,6 +1,6 @@
 MysticCave_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $4A
+	sHeaderTempo	$00B6
 	sHeaderCh	$05, $03
 	sHeaderDAC	MysticCave_DAC1
 	sHeaderDAC	MysticCave_DAC2

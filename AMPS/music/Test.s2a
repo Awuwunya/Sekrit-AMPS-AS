@@ -1,5 +1,5 @@
 	sHeaderInit
-	sHeaderTempo	$01, $00
+	sHeaderTempo	$0100
 	sHeaderCh	$00, $04
 	sHeaderDAC	.DAC
 	sHeaderDAC	.DAC

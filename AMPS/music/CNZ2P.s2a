@@ -1,6 +1,6 @@
 CasionNight2P_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $43
+	sHeaderTempo	$00BD
 	sHeaderCh	$05, $03
 	sHeaderDAC	CasionNight2P_DAC1
 	sHeaderDAC	CasionNight2P_DAC2

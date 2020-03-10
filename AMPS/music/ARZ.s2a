@@ -1,6 +1,6 @@
 AquaticRuin_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $20
+	sHeaderTempo	$00E0
 	sHeaderCh	$05, $03
 	sHeaderDAC	AquaticRuin_DAC1
 	sHeaderDAC	AquaticRuin_DAC2

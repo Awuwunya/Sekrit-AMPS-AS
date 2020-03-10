@@ -1,6 +1,6 @@
 CasinoNight_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $B8
+	sHeaderTempo	$0048
 	sHeaderCh	$05, $03
 	sHeaderDAC	CasinoNight_DAC1
 	sHeaderDAC	CasinoNight_DAC2

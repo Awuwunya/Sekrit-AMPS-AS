@@ -1,6 +1,6 @@
 TitleScreen_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $33
+	sHeaderTempo	$00CD
 	sHeaderCh	$05, $03
 	sHeaderDAC	TitleScreen_DAC1
 	sHeaderDAC	TitleScreen_DAC2

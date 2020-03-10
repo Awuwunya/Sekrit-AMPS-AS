@@ -1,6 +1,6 @@
 Ending_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$02, $69
+	sHeaderTempo	$004C
 	sHeaderCh	$05, $03
 	sHeaderDAC	Ending_DAC1
 	sHeaderDAC	Ending_DAC2

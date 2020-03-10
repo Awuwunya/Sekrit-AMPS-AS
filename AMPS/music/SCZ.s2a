@@ -1,6 +1,6 @@
 SkyChase_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $A4
+	sHeaderTempo	$005C
 	sHeaderCh	$05, $03
 	sHeaderDAC	SkyChase_DAC1
 	sHeaderDAC	SkyChase_DAC2

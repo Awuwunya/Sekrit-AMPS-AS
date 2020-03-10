@@ -145,11 +145,9 @@ dVolEnvProg2:
 
 .value
 		addq.b	#1,cEnvPos(a1)		; increment envelope position
-		add.b	d4,d1			; add envelope volume to d1
-		bpl.s	.nocap			; branch if volume did not overflow
-		moveq	#$7F,d1			; set volume to maximum
+		ext.w	d4			; extend volume to a word
+		add.w	d4,d1			; add envelope volume to d1
 
-.nocap
 	if FEATURE_PSGADSR=0
 		moveq	#1,d4			; set Z flag to 0
 	endif
@@ -210,7 +208,7 @@ dEnvCommand:
 
 	if FEATURE_PSGADSR=0
 		moveq	#0,d4			; set Z flag to 1
-	endíf
+	endif
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -228,9 +226,9 @@ dEnvCommand:
 ; ---------------------------------------------------------------------------
 
 	if FEATURE_MODTL
-ModulateTL:
+dModulateTL:
 		tst.b	(a3)			; check if modulation or volume envelope is in progress
-		bpl.s	ModulateTL3		; branch if none active
+		bpl.s	locret_dModulateTL	; branch if none active
 
 		btst	#0,toFlags(a3)		; check if modulation is enabled
 		beq.s	.env			; if not, branch
@@ -261,7 +259,7 @@ ModulateTL:
 .env
 		moveq	#0,d4
 		move.b	toVolEnv(a3),d4		; load volume envelope ID to d4
-		beq.s	ModulateTL3		; if 0, no volume update is necessary
+		beq.s	locret_dModulateTL	; if 0, no volume update is necessary
 
 	if safe=1
 		AMPS_Debug_VolEnvID		; check if volume envelope ID is valid
@@ -274,7 +272,7 @@ ModulateTL:
 
 		moveq	#0,d4
 
-ModulateTL2:
+dModulateTL2:
 		move.b	toEnvPos(a3),d4		; get envelope position to d4
 		move.b	(a2,d4.w),d4		; get the data in that position
 		bpl.s	.value			; if positive, its a normal value
@@ -284,15 +282,10 @@ ModulateTL2:
 
 .value
 		addq.b	#1,toEnvPos(a3)		; increment envelope position
+		ext.w	d4			; extend volume to a word
 		add.b	d4,d5			; add envelope volume to d5
 
-ModulateTL3:
-		tst.b	d5			; check volume
-		bpl.s	.nocap			; if positive, branch
-		cmp.b	#$C0,d5			; check the middle point of the volume
-		sls	d5			; if < $C0, set to $FF, otherwise 0
-
-.nocap
+locret_dModulateTL:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -318,23 +311,23 @@ dEnvCommandTL:
 
 .hold
 		subq.b	#1,toEnvPos(a3)		; decrease envelope position
-		jmp	ModulateTL2(pc)		; update the volume correctly
+		jmp	dModulateTL2(pc)	; update the volume correctly
 ; ---------------------------------------------------------------------------
 
 .reset
 		clr.b	toEnvPos(a3)		; set envelope position to 0
-		jmp	ModulateTL2(pc)		; run the program again
+		jmp	dModulateTL2(pc)	; run the program again
 ; ---------------------------------------------------------------------------
 
 .loop
 		move.b	toEnvPos(a3),d4		; get envelope position to d4
 		move.b	1(a2,d4.w),toEnvPos(a3)	; set envelope position to the next byte
-		jmp	ModulateTL2(pc)		; run the program again
+		jmp	dModulateTL2(pc)	; run the program again
 ; ---------------------------------------------------------------------------
 
 .ignore
 		addq.b	#2,toEnvPos(a3)		; skip the command and the next byte
-		jmp	ModulateTL2(pc)		; run the program again
+		jmp	dModulateTL2(pc)	; run the program again
 ; ---------------------------------------------------------------------------
 
 .stop
@@ -408,7 +401,9 @@ dProcessADSR:
 		bgt.s	.phaseset		; if we did, branch
 
 .sustain
-		add.b	(a3),d1			; add volume to d1
+		move.b	(a3),d4			; load volume to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d1			; add to volume in d1
 		rts
 
 .atkpos
@@ -436,12 +431,14 @@ dProcessADSR:
 		move.b	-1(a4),(a3)		; copy real volume here
 
 .nextphase
+		bset	#cfbVol,(a1)		; force volume update
 		moveq	#adpMask|admMask,d3	; prepare mode and phase mask to d3
 		and.b	adFlags(a3),d3		; and with flags on d3
 		move.b	dPhaseTableADSR(pc,d3.w),adFlags(a3); load flags from table
 
-		add.b	(a3),d1			; add volume to d1
-		bset	#cfbVol,(a1)		; force volume update
+		move.b	(a3),d4			; load volume to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d1			; add to volume in d1
 		rts
 ; ---------------------------------------------------------------------------
 

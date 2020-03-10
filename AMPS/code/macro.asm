@@ -31,12 +31,6 @@ FEATURE_FM3SM =		1	; set to 1 to enable FM3 Special Mode support
 FEATURE_MODTL =		1	; set to 1 to enable TL modulation feature
 FEATURE_STACK_DEPTH =	3	; set the number of slots in music channel stack. At least 3 is recommended
 
-; Select the tempo algorith.
-; 0 = Overflow method.
-; 1 = Counter method.
-
-TEMPO_ALGORITHM =	0
-
 ; if safe mode is enabled (1), then the driver will attempt to find any issues.
 ; if Vladik's error debugger is installed, then the error will be displayed.
 ; else, the CPU is trapped.
@@ -56,7 +50,7 @@ cPanning	ds.b 1		; channel panning and LFO. FM and DAC only. Not used in FM3 op2
 cDetune		ds.b 1		; frequency detune (offset)
 cPitch		ds.b 1		; pitch (transposition) offset
 cVolume		ds.b 1		; channel volume
-cTick		ds.b 1		; channel tick multiplier
+cStack		ds.b 1		; channel stack pointer. Music only
 	if FEATURE_PSGADSR
 cADSR =		*		; channel ADSR ID, PSG only
 	endif
@@ -96,8 +90,6 @@ cPrio =		*-1		; sound effect channel priority. SFX only
 
 cGateCur	ds.b 1		; frame counter to note off. Music only
 cGateMain	ds.b 1		; copy of frame counter to note off. Music only
-cStack		ds.b 1		; channel stack pointer. Music only
-		ds.b 1		; unused. Music only
 		ds.l FEATURE_STACK_DEPTH; channel stack data. Music only
 		even
 cSize =		*		; size of each music track
@@ -182,9 +174,10 @@ admImm		ds.b 4		; only sustain phase is executed
 	if FEATURE_MODTL
 	phase 0
 toFlags		ds.b 1		; various TL modulation flags
-toModDelay	ds.b 1		; delay before modulation starts
+toVol		ds.b 1		; volume offset for TL operator
 toModVol =	*		; modulation volume offset
 toMod		ds.l 1		; modulation data address
+toModDelay	ds.b 1		; delay before modulation starts
 toModSpeed	ds.b 1		; number of frames til next modulation step
 toModStep	ds.b 1		; modulation volume offset per step
 toModCount	ds.b 1		; number of modulation steps until reversal
@@ -204,7 +197,7 @@ tFM3		ds.b toSize4	; data for FM3
 tFM4		ds.b toSize4	; data for FM4
 tFM5		ds.b toSize4	; data for FM5
 	if FEATURE_FM6
-tFM6		ds.b cSize	; data for FM6
+tFM6		ds.b toSize4	; data for FM6
 	endif
 tSizeMus =	*		; size of all data for music channels
 
@@ -298,10 +291,10 @@ mCtrPal		ds.b 1		; frame counter fo 50hz fix
 mComm		ds.b 8		; communications bytes
 mMasterVolFM =	*		; master volume for FM channels
 mFadeAddr	ds.l 1		; fading program address
-mTempoMain	ds.b 1		; music normal tempo
-mTempoSpeed	ds.b 1		; music speed shoes tempo
-mTempo		ds.b 1		; current tempo we are using right now
-mTempoCur	ds.b 1		; tempo counter/accumulator
+mTempoMain	ds.w 1		; music normal tempo
+mTempoSpeed	ds.w 1		; music speed shoes tempo
+mTempo		ds.w 1		; current tempo we are using right now
+mTempoAcc	ds.w 1		; tempo counter/accumulator
 mQueue		ds.b 3		; sound queue
 mMasterVolPSG	ds.b 1		; master volume for PSG channels
 mVctMus		ds.l 1		; address of voice table for music
@@ -405,10 +398,10 @@ mBackPSG3	ds.b cSize	; back-up PSG 3 data
 mBackPSG4	ds.b cSize	; back-up PSG 4 data
 	endif
 
-mBackTempoMain	ds.b 1		; back-up music normal tempo
-mBackTempoSpeed	ds.b 1		; back-up music speed shoes tempo
-mBackTempo	ds.b 1		; back-up current tempo we are using right now
-mBackTempoCur	ds.b 1		; back-up tempo counter/accumulator
+mBackTempoMain	ds.w 1		; back-up music normal tempo
+mBackTempoSpeed	ds.w 1		; back-up music speed shoes tempo
+mBackTempo	ds.w 1		; back-up current tempo we are using right now
+mBackTempoAcc	ds.w 1		; back-up tempo counter/accumulator
 mBackVctMus	ds.l 1		; back-up address of voice table for music
 	endif
 

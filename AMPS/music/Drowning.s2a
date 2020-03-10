@@ -1,6 +1,6 @@
 Drowning_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$81, $80
+	sHeaderTempo	$8080
 	sHeaderCh	$05, $00
 	sHeaderDAC	Drowning_DAC1
 	sHeaderDAC	Drowning_DAC2
@@ -92,17 +92,17 @@ Drowning_FM1:
 ;	sComm		0, $01
 	sGate		$05
 	sCall		Drowning_Call1
-	ssTempo		$55
-	ssTempoShoes	$55
+	ssTempo		$00AB
+	ssTempoShoes	$00AB
 	sCall		Drowning_Call1
-	ssTempo		$40
-	ssTempoShoes	$40
+	ssTempo		$00C0
+	ssTempoShoes	$00C0
 	sCall		Drowning_Call1
-	ssTempo		$2A
-	ssTempoShoes	$2A
+	ssTempo		$00D6
+	ssTempoShoes	$00D6
 	sCall		Drowning_Call1
-	ssTempo		$19
-	ssTempoShoes	$19
+	ssTempo		$00E7
+	ssTempoShoes	$00E7
 	sCall		Drowning_Call1
 	dc.b nC5, $06
 ;	sComm		0, $01

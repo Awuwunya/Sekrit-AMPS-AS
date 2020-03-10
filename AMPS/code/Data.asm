@@ -72,7 +72,6 @@
 __mus :=	MusOff
 
 MusicIndex:
-	ptrMusic Test, $00
 	ptrMusic EHZ, $42, CPZ, $00, ARZ, $00, CNZ, $98, HTZ, $22, MCZ, $2A
 	ptrMusic OOZ, $10, MTZ, $00, SCZ, $85, WFZ, $58, DEZ, $80, HPZ, $00
 	ptrMusic EHZ2P, $85, CNZ2P, $23, MCZ2P, $00

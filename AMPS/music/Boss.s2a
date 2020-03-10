@@ -1,6 +1,6 @@
 Boss_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $1D
+	sHeaderTempo	$00E3
 	sHeaderCh	$05, $03
 	sHeaderDAC	Boss_DAC1
 	sHeaderDAC	Boss_DAC2

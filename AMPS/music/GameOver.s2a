@@ -1,6 +1,6 @@
 GameOver_Header:
 	sHeaderInit						; Z80 offset is $D57A
-	sHeaderTempo	$02, $0E
+	sHeaderTempo	$0079
 	sHeaderCh	$05, $00
 	sHeaderDAC	GameOver_DAC1
 	sHeaderDAC	GameOver_DAC2

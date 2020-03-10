@@ -1,6 +1,6 @@
 Continue_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $25
+	sHeaderTempo	$00DB
 	sHeaderCh	$04, $00
 	sHeaderDAC	Continue_DAC1
 	sHeaderDAC	Continue_DAC2

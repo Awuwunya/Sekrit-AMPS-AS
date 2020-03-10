@@ -1,6 +1,6 @@
 Emerald_Header:
 	sHeaderInit						; Z80 offset is $D6C9
-	sHeaderTempo	$01, $2B
+	sHeaderTempo	$00D5
 	sHeaderCh	$06, $02
 	sHeaderDAC	Emerald_DAC1
 	sHeaderDAC	Emerald_DAC2

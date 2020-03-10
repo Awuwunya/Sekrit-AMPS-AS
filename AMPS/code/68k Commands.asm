@@ -27,7 +27,7 @@ dCommands:
 	bra.w	dcaDetune	; E2 - Add xx to channel frequency displacement (DETUNE)
 	bra.w	dcsTransp	; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	bra.w	dcaTransp	; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	bra.w	dcsTmul		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	bra.w	*		; E5 -
 	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	bra.w	dcVoice		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
@@ -90,8 +90,8 @@ dCommands:
 	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
 	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
 	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
-	bra.w	dcsTmulCh	; FF 48 - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-	bra.w	*		; FF 4C - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+	bra.w	*		; FF 48 -
+	bra.w	*		; FF 4C -
 
 	if FEATURE_MODTL
 tlmod	macro name
@@ -105,11 +105,13 @@ tlmod	macro name
 	tlmod	dcModOnTL	; FF 6x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
 	tlmod	dcModTL		; FF 7x - Modulation for operator x (TL_MOD - MOD_SETUP)
 	tlmod	dcVolEnvTL	; FF 8y - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
+	tlmod	dcaVolTL	; FF 9y - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
+	tlmod	dcsVolTL	; FF Ay - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
 	endif
 
 	if safe=1
-		bra.w	dcFreeze	; FF 90 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
-		bra.w	dcTracker	; FF 94 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+		bra.w	dcFreeze	; FF B0 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
+		bra.w	dcTracker	; FF B4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -131,7 +133,7 @@ dcskip	macro amount
 	dcskip	1		; E2 - Add xx to channel frequency displacement (DETUNE)
 	dcskip	1		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
 	dcskip	1		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	dcskip	1		; E5 - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
+	dcskip	1		; E5 -
 	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
 	dcskip	1		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
@@ -292,23 +294,6 @@ dcPitchDAC:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Tracker commands for changing channel tick multiplier
-; ---------------------------------------------------------------------------
-
-dcsTmulCh:
-		move.b	(a2)+,cTick(a1)		; load tick multiplier from tracker to channel
-		rts
-
-dcsTmul:
-		move.b	(a2)+,d3		; load tick multiplier from tracker to d3
-.x :=	mDAC1					; start at DAC1
-	rept Mus_Ch				; do for all music channels
-		move.b	d3,cTick+.x.w		; set channel tick multiplier
-.x :=		.x+cSize			; go to next channel
-	endm
-		rts
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Tracker command for enabling or disabling the hold flag
 ; ---------------------------------------------------------------------------
 
@@ -355,39 +340,43 @@ dcsTransp:
 ; ---------------------------------------------------------------------------
 
 dcsTempoShoes:
-		move.b	(a2)+,d3		; load tempo value from tracker
-		move.b	d3,mTempoSpeed.w	; save as the speed shoes tempo
+	dREAD_WORD	a2, d3			; load tempo value from tracker
+		move.w	d3,mTempoSpeed.w	; save as the speed shoes tempo
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	dcsTempoCur		; if is, load as current tempo too
 		rts
 
 dcsTempo:
-		move.b	(a2)+,d3		; load tempo value from tracker
-		move.b	d3,mTempoMain.w		; save as the main tempo
+	dREAD_WORD	a2, d3			; load tempo value from tracker
+		move.w	d3,mTempoMain.w		; save as the main tempo
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	locret_Tempo		; if not, load as current tempo too
 
 dcsTempoCur:
-		move.b	d3,mTempo.w		; save as current tempo
+		move.w	d3,mTempo.w		; save as current tempo
 
 locret_Tempo:
 		rts
 
 dcaTempoShoes:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		add.b	d3,mTempoSpeed.w	; add to the speed shoes tempo
+		ext.w	d3			; extend to word
+		add.w	d3,mTempoSpeed.w	; add to the speed shoes tempo
+
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	dcaTempoCur		; if is, add to current tempo too
 		rts
 
 dcaTempo:
 		move.b	(a2)+,d3		; load tempo value from tracker
-		add.b	d3,mTempoMain.w		; add to the main tempo
+		ext.w	d3			; extend to word
+		add.w	d3,mTempoMain.w		; add to the main tempo
+
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes mode is active
 		bne.s	locret_Tempo		; if not, add to current tempo too
 
 dcaTempoCur:
-		add.b	d3,mTempo.w		; add to current tempo
+		add.w	d3,mTempo.w		; add to current tempo
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -679,7 +668,6 @@ copychFM3SM	macro ch, type
 	move.w	#((1<<cfbRun)|(1<<cfbVol))<<8|type,ch+cFlags.w; enable channel tracker and set type
 	move.l	a4,ch+cData.w			; save data address
 
-	move.b	mFM3op1+cTick.w,ch+cTick.w	; copy tick multiplier
 	move.b	#cSize,ch+cStack.w		; set stack address
 	move.b	#1,ch+cDuration.w		; set duration to expire next frame
 
@@ -931,7 +919,7 @@ dcVoice:
 ;   d6 - Used for modulator offset
 ; ---------------------------------------------------------------------------
 
-WriteReg	macro	offset, reg
+dWriteReg	macro	offset, reg
 ._x :=		offset
 	if "reg"<>""
 		move.b	(a4)+,(a5)+		; write value to buffer
@@ -944,7 +932,7 @@ WriteReg	macro	offset, reg
 
 		shift				; shift the next argument to view
 		shift				; ''
-		WriteReg ._x, ALLARGS		; get the next argument
+		dWriteReg ._x, ALLARGS		; get the next argument
 	endif
     endm
 
@@ -975,26 +963,25 @@ dUpdateVoiceFM:
 		or.b	d2,d3			; add channel offset to register
 		move.b	d3,(a5)+		; write register to buffer
 
-	WriteReg	0, $30, $38, $34, $3C	; Detune, Multiple
-	WriteReg	0, $50, $58, $54, $5C	; Rate Scale, Attack Rate
-	WriteReg	0, $60, $68, $64, $6C	; Decay 1 Rate
-	WriteReg	0, $70, $78, $74, $7C	; Decay 2 Rate
-	WriteReg	0, $80, $88, $84, $8C	; Decay 1 level, Release Rate
-	WriteReg	0, $90, $98, $94, $9C	; SSG-EG
+	dWriteReg	0, $30, $38, $34, $3C	; Detune, Multiple
+	dWriteReg	0, $50, $58, $54, $5C	; Rate Scale, Attack Rate
+	dWriteReg	0, $60, $68, $64, $6C	; Decay 1 Rate
+	dWriteReg	0, $70, $78, $74, $7C	; Decay 2 Rate
+	dWriteReg	0, $80, $88, $84, $8C	; Decay 1 level, Release Rate
+	dWriteReg	0, $90, $98, $94, $9C	; SSG-EG
 
 		moveq	#4-1,d1			; prepare 4 operators to d1
 		move.b	cVolume(a1),d3		; load FM channel volume to d3
+		ext.w	d3			; extend to word
 
 	if FEATURE_SFX_MASTERVOL=0
 		cmpa.w	#mSFXDAC1,a1		; is this a SFX channel
 		bhs.s	.noover			; if so, do not add master volume!
 	endif
 
-		add.b	mMasterVolFM.w,d3	; add master FM volume to d3
-	if FEATURE_MODTL=0
-		bpl.s	.noover			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		move.b	mMasterVolFM.w,d6	; load master FM volume to d6
+		ext.w	d6			; extend to word
+		add.w	d6,d3			; add to volume
 
 .noover
 	if FEATURE_UNDERWATER
@@ -1008,12 +995,7 @@ dUpdateVoiceFM:
 		move.b	(a6,d4.w),d4		; get the value from table
 		move.b	d4,d6			; copy to d6
 		and.w	#7,d4			; mask out extra stuff
-
-		add.b	d4,d3			; add algorithm to Total Level carrier offset
-	if FEATURE_MODTL=0
-		bpl.s	.uwdone			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		add.w	d4,d3			; add algorithm to Total Level carrier offset
 
 .uwdone
 	endif
@@ -1022,31 +1004,33 @@ dUpdateVoiceFM:
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d3,d5			; add carrier offset to loaded value
-	else
-		add.b	d3,d5			; add carrier offset to loaded value
-		bmi.s	.slot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
-
+		add.w	d3,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
 
 .noslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .slot
 	if FEATURE_MODTL
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
+		cmp.w	#$80,d5			; check if volume is out of range
+		bls.s	.nocap			; if not, branch
+		spl	d5			; if positive (above $7F), set to $FF. Otherwise, set to $00
+
+.nocap
 		move.b	d5,(a5)+		; save the Total Level value
 		move.b	(a6)+,d4		; load register to d4
 		or.b	d2,d4			; add channel offset to register
@@ -1139,8 +1123,8 @@ dUpdateVoiceFM3:
 		or.b	d2,d3			; add channel offset to register
 		move.b	d3,(a5)+		; write register to buffer
 
-	WriteReg	4, $30, $50, $60	; Detune, Multiple - Rate Scale, Attack Rate - Decay 1 Rate
-	WriteReg	4, $70, $80, $90	; Decay 2 Rate - Decay 1 level, Release Rate - SSG-EG
+	dWriteReg	4, $30, $50, $60	; Detune, Multiple - Rate Scale, Attack Rate - Decay 1 Rate
+	dWriteReg	4, $70, $80, $90	; Decay 2 Rate - Decay 1 level, Release Rate - SSG-EG
 
 	if FEATURE_MODTL
 		add.w	d1,d1			; double offset
@@ -1149,17 +1133,16 @@ dUpdateVoiceFM3:
 	endif
 
 		move.b	cVolume(a1),d3		; load FM channel volume to d3
+		ext.w	d3			; extend to word
 
 ;	if FEATURE_SFX_MASTERVOL=0
 ;		cmpa.w	#mSFXDAC1,a1		; is this a SFX channel
 ;		bhs.s	.noover			; if so, do not add master volume!
 ;	endif
 
-		add.b	mMasterVolFM.w,d3	; add master FM volume to d3
-	if FEATURE_MODTL=0
-		bpl.s	.noover			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		move.b	mMasterVolFM.w,d6	; load master FM volume to d6
+		ext.w	d6			; extend to word
+		add.w	d6,d3			; add to volume
 
 .noover
 	if FEATURE_UNDERWATER
@@ -1173,40 +1156,32 @@ dUpdateVoiceFM3:
 		move.b	(a6,d4.w),d4		; get the value from table
 		move.b	d4,d6			; copy to d6
 		and.w	#7,d4			; mask out extra stuff
-
-		add.b	d4,d3			; add algorithm to Total Level carrier offset
-	if FEATURE_MODTL=0
-		bpl.s	.uwdone			; if volume did not overflow, skip
-		moveq	#$7F,d3			; force FM volume to silence
-	endif
+		add.w	d4,d3			; add algorithm to Total Level carrier offset
 
 .uwdone
 	endif
 
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
+		ext.w	d5			; extend to word
 		bpl.s	.noslot			; if slot operator bit was not set, branch
 
-	if FEATURE_MODTL
 		and.w	#$7F,d5			; get rid of sign bit (ugh)
-		add.b	d3,d5			; add carrier offset to loaded value
-	else
-		add.b	d3,d5			; add carrier offset to loaded value
-		bmi.s	.slot			; if we did not overflow, branch
-		moveq	#-1,d5			; cap to silent volume
-	endif
-
+		add.w	d3,d5			; add carrier offset to loaded value
 	if FEATURE_UNDERWATER
 		bra.s	.slot
 	endif
 
 .noslot
 	if FEATURE_UNDERWATER
-		add.b	d6,d5			; add modulator offset to loaded value
+		add.w	d6,d5			; add modulator offset to loaded value
 	endif
 
 .slot
 	if FEATURE_MODTL
-		jsr	ModulateTL(pc)		; do TL modulation on this channel
+		move.b	toVol(a3),d4		; load volume offset to d4
+		ext.w	d4			; extend to word
+		add.w	d4,d5			; add to volume in d5
+		jsr	dModulateTL(pc)		; do TL modulation on this channel
 	endif
 
 		move.b	d5,(a5)+		; save the Total Level value
@@ -1538,6 +1513,23 @@ name_Normal:	label *
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
+; Tracker command for adding volume
+; ---------------------------------------------------------------------------
+
+	tlmodrt	1, dcaVolTL			; generate call structure to this routine
+		move.b	(a2)+,d3		; load volume to d4
+		add.b	d3,toVol(a3)		; add d4 to volume
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for setting volume
+; ---------------------------------------------------------------------------
+
+	tlmodrt	1, dcsVolTL			; generate call structure to this routine
+		move.b	(a2)+,toVol(a3)		; set volume to xx
+		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Tracker command for setting volume envelope ID
 ; ---------------------------------------------------------------------------
 
@@ -1631,6 +1623,8 @@ dccte		macro extra, first, second
 	dccte	0, dcResetVolEnvTL, dcModOnTL_Normal	; %0111: Enable modulation and reset volume envelope
 	dccte	1, dcVolEnvTL_Normal, dcModOffTL_Normal	; %1000; Setup volume envelope and disable modulation
 	dccte	0, dcVolEnvTL_Normal, dcModOnTL_Normal	; %1001; Setup volume envelope and enable modulation
+	dccte	0, dcaVolTL_Normal, dcComplexRts	; %1010; Add volume
+	dccte	0, dcsVolTL_Normal, dcComplexRts	; %1011; Set volume
 
 	else
 dcComplexTL:
@@ -1662,7 +1656,7 @@ dcsComm:
 
 dcCondRegTable:
 	dc.w ConsoleRegion, mFlags	; 0
-	dc.w mTempoMain, mTempoSpeed	; 2
+	dc.w 0, 0			; 2
 	dc.w 0, 0			; 4
 	dc.w 0, 0			; 6
 	dc.w 0, 0			; 8

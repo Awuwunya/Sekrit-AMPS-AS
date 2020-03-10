@@ -1,6 +1,6 @@
 GotThroughAct_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$82, $56
+	sHeaderTempo	$8055
 	sHeaderCh	$05, $02
 	sHeaderDAC	GotThroughAct_DAC1
 	sHeaderDAC	GotThroughAct_DAC2

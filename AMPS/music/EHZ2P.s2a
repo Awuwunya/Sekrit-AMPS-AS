@@ -1,6 +1,6 @@
 EmeraldHill2P_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $A5
+	sHeaderTempo	$005B
 	sHeaderCh	$05, $03
 	sHeaderDAC	EmeraldHill2P_DAC1
 	sHeaderDAC	EmeraldHill2P_DAC2

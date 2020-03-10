@@ -1,6 +1,6 @@
 Metropolis_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $16
+	sHeaderTempo	$00EA
 	sHeaderCh	$05, $04
 	sHeaderDAC	Metropolis_DAC1
 	sHeaderDAC	Metropolis_DAC2

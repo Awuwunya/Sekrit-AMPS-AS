@@ -1,6 +1,6 @@
 Results2P_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $98
+	sHeaderTempo	$0068
 	sHeaderCh	$05, $03
 	sHeaderDAC	Results2P_DAC1
 	sHeaderDAC	Results2P_DAC2

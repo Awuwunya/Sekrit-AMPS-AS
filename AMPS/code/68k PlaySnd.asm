@@ -229,7 +229,10 @@ dPlaySnd_Music:
 		lea	.index(pc),a2		; get music pointer table with an offset
 		add.w	d1,d1			; quadruple music ID
 		add.w	d1,d1			; since each entry is 4 bytes in size
+
 		move.b	(a2,d1.w),d6		; load speed shoes tempo from the unused 8 bits
+		ext.w	d6			; extend to word
+		move.w	d6,-(sp)		; store in stack :(
 		movea.l	(a2,d1.w),a2		; get music header pointer from the table
 
 	if safe=1
@@ -247,12 +250,13 @@ dPlaySnd_Music:
 ; ---------------------------------------------------------------------------
 
 	if FEATURE_BACKUP
-		btst	#6,1(a2)		; check if this song should cause the last one to be backed up
+		btst	#6,(a2)			; check if this song should cause the last one to be backed up
 		beq.s	.clrback		; if not, skip
 		bset	#mfbBacked,mFlags.w	; check if song was backed up (and if not, set the bit)
 		bne.s	.noback			; if yes, preserved the backed up song
 
 		move.l	mTempoMain.w,mBackTempoMain.w; backup tempo settings
+		move.l	mTempo.w,mBackTempo.w	; ''
 		move.l	mVctMus.w,mBackVctMus.w	; backup voice table address
 
 		lea	mBackUpArea.w,a4	; load source address to a4
@@ -287,42 +291,42 @@ dPlaySnd_Music:
 ; out the exact same though...
 ; ---------------------------------------------------------------------------
 
-		move.b	d6,mTempoSpeed.w	; save loaded value into tempo speed setting
 		jsr	dStopMusic(pc)		; mute hardware and reset all driver memory
 		jsr	dResetVolume(pc)	; reset volumes and end any fades
 
-		moveq	#0,d3
-		move.b	(a2)+,d3		; load song tempo to d3
-		move.b	d3,mTempoMain.w		; save as regular tempo
+		and.b	#$FF-(1<<mfbNoPAL),mFlags.w; enable PAL fix
+		move.w	(a2)+,d3		; load song tempo to d3
+		bpl.s	.noPAL			; branch if the loaded value was positive
+		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
+
+.noPAL
+		and.w	#$3FFF,d3		; clear extra bits
+		move.w	d3,d6			; copy to d6
+		add.w	(sp)+,d6		; add stored tempo from stack
+		move.w	d6,mTempoSpeed.w	; save d6 as speed tempo
+		move.w	d3,mTempoMain.w		; save d3 as regular tempo
+
 		btst	#mfbSpeed,mFlags.w	; check if speed shoes flag was set
 		beq.s	.tempogot		; if not, use main tempo
-		move.b	mTempoSpeed.w,d3	; load speed shoes tempo to d3 instead
+		move.w	d6,d3			; load speed shoes tempo to d3 instead
 
 .tempogot
-		move.b	d3,mTempo.w		; save as the current tempo
-		move.b	d3,mTempoCur.w		; copy into the accumulator/counter
-		and.b	#$FF-(1<<mfbNoPAL),mFlags.w; enable PAL fix
+		move.w	d3,mTempo.w		; save as the current tempo
+		move.w	d3,mTempoAcc.w		; copy into the accumulator/counter
 ; ---------------------------------------------------------------------------
 ; If the 7th bit (msb) of tick multiplier is set, PAL fix gets
 ; disabled. I know, very weird place to put it, but we dont have
 ; much free room in the song header
 ; ---------------------------------------------------------------------------
 
-		move.b	(a2)+,d4		; load the tick multiplier to d4
-		bpl.s	.noPAL			; branch if the loaded value was positive
-		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
-
-.noPAL
-		move.b	(a2),d0			; load the PSG channel count to d0
-		ext.w	d0			; extend to word (later, its read from stack...)
-		move.w	d0,-(sp)		; store in stack
+		moveq	#0,d4			; clear d4
+		move.b	(a2),d4			; load the PSG channel count to d4
 		addq.w	#2,a2			; go to DAC1 data section
 
 		mvbit	d2, cfbRun, cfbVol	; prepare running tracker and volume flags into d2
 		moveq	#$C0,d1			; prepare panning value of centre to d1
 		move.w	#$100,d3		; prepare default DAC frequency
 
-		and.w	#$3F,d4			; keep tick multiplier value in range
 		moveq	#cSize,d6		; prepare channel size to d6
 		moveq	#1,d5			; prepare duration of 0 frames to d5
 
@@ -333,7 +337,6 @@ dPlaySnd_Music:
 .loopDAC
 		move.b	d2,(a1)			; save channel flags
 		move.b	(a4)+,cType(a1)		; load channel type from list
-		move.b	d4,cTick(a1)		; set channel tick multiplier
 		move.b	d6,cStack(a1)		; reset channel stack pointer
 		move.b	d1,cPanning(a1)		; reset panning to centre
 		move.b	d5,cDuration(a1)	; reset channel duration
@@ -371,7 +374,6 @@ dPlaySnd_Music:
 
 		move.b	d2,(a1)			; save channel flags
 		move.b	(a4)+,cType(a1)		; load channel type from list
-		move.b	d4,cTick(a1)		; set channel tick multiplier
 		move.b	d6,cStack(a1)		; reset channel stack pointer
 		move.b	d1,cPanning(a1)		; reset panning to centre
 		move.b	d5,cDuration(a1)	; reset channel duration
@@ -388,7 +390,7 @@ dPlaySnd_Music:
 		dbf	d0,.loopFM		; repeat for all FM channels
 
 .doPSG
-		move.w	(sp)+,d0		; load the PSG channel count from stack
+		tst.b	d4			; check how many PSG channels there are
 	if safe=1
 		bmi.w	.intSFX			; if no PSG channels are loaded, branch
 	else
@@ -410,7 +412,6 @@ dPlaySnd_Music:
 .loopPSG
 		move.b	d2,(a1)			; save channel flags
 		move.b	(a4)+,cType(a1)		; load channel type from list
-		move.b	d4,cTick(a1)		; set channel tick multiplier
 		move.b	d6,cStack(a1)		; reset channel stack pointer
 		move.b	d5,cDuration(a1)	; reset channel duration
 
@@ -425,7 +426,7 @@ dPlaySnd_Music:
 		move.b	(a2)+,cDetune(a1)	; load detune offset
 		move.b	(a2)+,cVolEnv(a1)	; load volume envelope ID
 		adda.w	d6,a1			; go to the next channel
-		dbf	d0,.loopPSG		; repeat for all FM channels
+		dbf	d4,.loopPSG		; repeat for all PSG channels
 ; ---------------------------------------------------------------------------
 ; Unlike SMPS, AMPS does not have pointer to the voice table of
 ; a song. This may be limiting for some songs, but this allows AMPS
@@ -936,12 +937,12 @@ dPlaySnd_Reset:
 
 dPlaySnd_ShoesOff:
 		bclr	#mfbSpeed,mFlags.w	; disable speed shoes flag
-		move.b	mTempoMain.w,mTempoCur.w; set tempo accumulator/counter to normal one
-		move.b	mTempoMain.w,mTempo.w	; set main tempor to normal one
+		move.w	mTempoMain.w,mTempoAcc.w; set tempo accumulator/counter to normal one
+		move.w	mTempoMain.w,mTempo.w	; set main tempor to normal one
 
 	if FEATURE_BACKUP
-		move.b	mBackTempoMain.w,mBackTempoCur.w; do the same for backup tempos
-		move.b	mBackTempoMain.w,mBackTempo.w
+		move.w	mBackTempoMain.w,mBackTempoAcc.w; do the same for backup tempos
+		move.w	mBackTempoMain.w,mBackTempo.w
 	endif
 		rts
 ; ===========================================================================
@@ -998,12 +999,12 @@ locret_ReqVolUp:
 
 dPlaySnd_ShoesOn:
 		bset	#mfbSpeed,mFlags.w	; enable speed shoes flag
-		move.b	mTempoSpeed.w,mTempoCur.w; set tempo accumulator/counter to speed shoes one
-		move.b	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
+		move.w	mTempoSpeed.w,mTempoAcc.w; set tempo accumulator/counter to speed shoes one
+		move.w	mTempoSpeed.w,mTempo.w	; set main tempor to speed shoes one
 
 	if FEATURE_BACKUP
-		move.b	mBackTempoSpeed.w,mBackTempoCur.w; do the same for backup tempos
-		move.b	mBackTempoSpeed.w,mBackTempo.w
+		move.w	mBackTempoSpeed.w,mBackTempoAcc.w; do the same for backup tempos
+		move.w	mBackTempoSpeed.w,mBackTempo.w
 	endif
 		rts
 ; ===========================================================================

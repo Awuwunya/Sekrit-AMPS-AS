@@ -1,6 +1,6 @@
 Credits_Header:
 	sHeaderInit						; Z80 offset is $D797
-	sHeaderTempo	$01, $10
+	sHeaderTempo	$00F0
 	sHeaderCh	$05, $03
 	sHeaderDAC	Credits_DAC1
 	sHeaderDAC	Credits_DAC2
@@ -2033,7 +2033,7 @@ Credits_Loop58:
 Credits_Loop59:
 	dc.b dSnare
 	sLoop		$00, $07, Credits_Loop59
-	ssTempo		$16
+	ssTempo		$00EA
 	sCall		Credits_Call40
 	dc.b dKick, $0C, dLowTom, dSnare, dKick, dKick, dFloorTom, dSnare
 	dc.b dScratch, $04, $06, $02, dKick, $0C, dSnare, $06
@@ -2073,7 +2073,7 @@ Credits_Loop62:
 	dc.b dKick, $0C, dSnare, $06, dKick, $12, dKick, $06
 	dc.b dKick, $06, dSnare, $06, dKick, $0C, $06, dSnare
 	dc.b $0C, $08, $04
-	ssTempo		$33
+	ssTempo		$00CD
 	dc.b dSnare, $30, dSnare, $0C, dSnare, dSnare, dSnare, $08
 	dc.b $04
 	sCall		Credits_Call42
@@ -2081,7 +2081,7 @@ Credits_Loop62:
 	dc.b dKick, $08, $0C, $04, dSnare, $0C, dKick, $08
 	dc.b $04, dSnare, $08, $04, $08, $04, $04, $04
 	dc.b $04, $08, $04
-	ssTempo		$3B
+	ssTempo		$00C5
 
 Credits_Loop63:
 	dc.b dKick, $09, dKick, $03, $0C, dSnare, dKick, dKick
@@ -2108,7 +2108,7 @@ Credits_Loop64:
 	dc.b dSnare, $02, $04, dKick, $0C, $06, $0C, dSnare
 	dc.b $02, $04, dKick, $0C, $06, $0C, dSnare, $06
 	dc.b dSnare, dSnare, dSnare
-	ssTempo		$40
+	ssTempo		$00C0
 	dc.b dKick, $0C, dSnare, dKick, dSnare, dKick, dSnare, dKick
 	dc.b $08, dSnare, $04, $0C
 

@@ -157,30 +157,6 @@ locret_SetFilter:
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Routine to multiply duration by tick rate
-; We actually use a dbf loop instead of mulu, because 2 rounds
-; around the loop will be faster than a single mulu instruction
-;
-; input:
-;   d1 - Duration length
-; thrash:
-;   d5 - Tick counter
-;   d6 - The final duration value
-; ---------------------------------------------------------------------------
-
-dCalcDuration:
-		moveq	#0,d6			; clear duration
-		moveq	#0,d5			; clear upper bytes (for dbf)
-		move.b	cTick(a1),d5		; get tick multiplier to d5
-
-.multiply
-		add.b	d1,d6			; add duration value to d0
-		dbf	d5,.multiply		; multiply by tick rate
-
-		move.b	d6,cLastDur(a1)		; save as the new duration
-		rts				; get copied to duration by later code
-; ===========================================================================
-; ---------------------------------------------------------------------------
 ; Handle Dual PCM YM Cue correctly
 ; ---------------------------------------------------------------------------
 
@@ -339,29 +315,18 @@ dUpdateAllAMPS:
 .driver
 	; continue to run sound driver again
 ; ---------------------------------------------------------------------------
-; There are 2 methods of handling tempo adjustments in SMPS,
-; overflow (where a value is added to the accumulator, and when it
-; range overflows, tick of delay is added), and counter (where a
-; counter is copied to the tempo, which is then decreased each frame,
-; until it becomes 0, after which a tick of delay is added). AMPS
-; supports these both too, because there is no single right answer,
-; and users may prefer one over the other. The overflow method is
-; really good for low values, as it provides very fine control over
-; the tempo, but at high ranges it gets worse. Meanwhile the counter
-; method isn't as good for small values, but for large value it works
-; better. You may choose this setting in the macro.asm file,
+; This is a custom tempo algorithm. It allows for the tempo to run the
+; driver multiple times. However, because of the way the driver works,
+; the channels must be ran at least once. This code will delay the
+; channels if this needs to happen, before the execution occurs.
 ; ---------------------------------------------------------------------------
 
-	if TEMPO_ALGORITHM		; Counter method
-		subq.b	#1,mTempoCur.w		; sub 1 from counter
-		bne.s	dAMPSdoDAC		; if nonzero, branch
-		move.b	mTempo.w,mTempoCur.w	; copy tempo again
+		move.w	mTempo.w,d3		; load tempo to d3
+		add.w	d3,mTempoAcc.w		; add to tempo accumulator
 
-	else				; Overflow method
-		move.b	mTempo.w,d3		; get tempo to d3
-		add.b	d3,mTempoCur.w		; add to accumulator
-		bcc.s	dAMPSdoDAC		; if carry clear, branch
-	endif
+		tst.b	mTempoAcc.w		; check if there is a full frame of delay yet
+		bne.s	dAMPSdoDAC		; if so, skip
+		addq.b	#1,mTempoAcc.w		; this later gets substracted from, fix it
 
 .ch :=	mDAC1+cDuration				; start at DAC1 duration
 	rept Mus_Ch				; loop through all music channels

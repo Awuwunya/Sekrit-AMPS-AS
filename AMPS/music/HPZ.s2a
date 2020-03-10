@@ -1,6 +1,6 @@
 HiddenPalace_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$02, $20
+	sHeaderTempo	$0070
 	sHeaderCh	$05, $03
 	sHeaderDAC	HiddenPalace_DAC1
 	sHeaderDAC	HiddenPalace_DAC2

@@ -61,9 +61,17 @@ sHeaderCh	macro fmc,psgc
 	endif
     endm
 
-; Header - Set up Tempo and Tick Multiplier
-sHeaderTempo	macro tmul,tempo
-	dc.b tempo,tmul-1
+; Header - Set up Tempo
+sHeaderTempo	macro tempo, narg
+	dc.w tempo
+
+	if "narg"<>""
+		error "Wrong number of arguments for sHeaderTempo!"
+	endif
+
+	if (tempo&$3FFF)>$300
+		warning "It is dangerious to use tempos >$300!"
+	endif
     endm
 
 ; Header - Set priority leve
@@ -328,16 +336,6 @@ saTranspose	macro transp
 	dc.b $E4, transp
     endm
 
-; E5xx - Set global tick multiplier to xx (TICK_MULT - TMULT_ALL)
-ssTickMul	macro tick
-	dc.b $E5, tick-1
-    endm
-
-; FF48xx - Set channel tick multiplier to xx (TICK_MULT - TMULT_CUR)
-ssTickMulCh	macro tick
-	dc.b $FF, $48, tick-1
-    endm
-
 ; E6 - Freeze frequency for the next note (FREQ_FREEZE)
 sFqFz =		$E6
 
@@ -359,14 +357,16 @@ sModEnv		macro env
 	dc.b $F3, env
     endm
 
-; E9xx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+; E9xxxx - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
 ssTempoShoes	macro tempo
-	dc.b $E9, tempo
+	dc.b $E9
+	dc.w tempo
     endm
 
-; EAxx - Set music tempo to xx (TEMPO - TEMPO_SET)
+; EAxxxx - Set music tempo to xx (TEMPO - TEMPO_SET)
 ssTempo		macro tempo
-	dc.b $EA, tempo
+	dc.b $EA
+	dc.w tempo
     endm
 
 ; FF18xx - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)
@@ -378,7 +378,6 @@ saTempoSpeed	macro tempo
 saTempo		macro tempo
 	dc.b $FF,$1C, tempo
     endm
-
 ; EB - Use sample DAC mode, where each note is a different sample (DAC_MODE - DACM_SAMP)
 sModeSampDAC	macro
 	dc.b $EB
@@ -585,22 +584,28 @@ sCSMOff		macro ops
     endm
 
 ; F4xx -  Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
-;  xx: lower 4 bits indicate what operators to apply to (reversed), and higher 4 bits are the operation:
-;    %0000: Setup modulation and reset volume envelope
-;    %0001: Setup modulation
-;    %0010: Setup volume envelope
-;    %0011: Setup modulation and volume envelope
-;    %0100: Disable modulation
-;    %0101: Enable modulation
-;    %0110: Disable modulation and reset volume envelope
-;    %0111: Enable modulation and reset volume envelope
-;    %1000; Setup volume envelope and disable modulation
-;    %1001; Setup volume envelope and enable modulation
+;  xx: lower 4 bits indicate what operators to apply to, and higher 4 bits are the operation:
+
+	phase 0
+sctModsEnvr	ds.b $10	; %0000: Setup modulation and reset volume envelope
+sctMods		ds.b $10	; %0001: Setup modulation
+sctEnvs		ds.b $10	; %0010: Setup volume envelope
+sctModsEnvs	ds.b $10	; %0011: Setup modulation and volume envelope
+sctModd		ds.b $10	; %0100: Disable modulation
+sctMode		ds.b $10	; %0101: Enable modulation
+sctModdEnvr	ds.b $10	; %0110: Disable modulation and reset volume envelope
+sctModeEnvr	ds.b $10	; %0111: Enable modulation and reset volume envelope
+sctModdEnvs	ds.b $10	; %1000: Setup volume envelope and disable modulation
+sctModeEnvs	ds.b $10	; %1001: Setup volume envelope and enable modulation
+sctVola		ds.b $10	; %1010: Add volume
+sctVols		ds.b $10	; %1011: Set volume
+
 sComplexTL	macro val1, val2, val3, val4
-	dc.b $F4, val1
-.mode =		val1
+.mode =		(val1&$F0)|((val1&1)<<3)|((val1&2)<<1)|((val1&4)>>1)|((val1&8)>>3)
 .mask =		1
-		shift
+
+	shift
+	dc.b $F4, .mode
 
 ; NAT: Here is some fun code to setup parameters
 	rept 4
@@ -619,9 +624,18 @@ sComplexTL	macro val1, val2, val3, val4
 .flags =				2	; envelope only
 				case $90
 .flags =				2	; envelope only
+				case $A0
+.flags =				4	; volume only
+				case $B0
+.flags =				4	; volume only
 				elsecase
 .flags =				0	; nothing
 			endcase
+
+			if .flags&4	; check if we need to do volume modification
+				dc.b val1
+				shift
+			endif
 
 			if .flags&2	; check if we need to do volume envelope
 				dc.b val1
@@ -659,25 +673,35 @@ sModOffTL	macro op
 ; (TL_MOD - MOD_SETUP)
 ssModTL		macro op, wait, speed, step, count
 	dc.b $FF, $70|((op-1)*4)
-	sModData	\wait,\speed,\step,\count
+	sModData	wait,speed,step,count
     endm
 
 ; FF8yxx - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
 sVolEnvTL	macro val
-	dc.b $FF, $80|((op-1)*4), \val
+	dc.b $FF, $80|((op-1)*4), val
+    endm
+
+; FF9yxx - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
+saVolTL		macro op, val
+	dc.b $FF, $90|((op-1)*4), val
+    endm
+
+; FFAyxx - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
+ssVolTL		macro op, val
+	dc.b $FF, $A0|((op-1)*4), val
     endm
 
 ; FF80 - Freeze 68k. Debug flag (DEBUG_STOP_CPU)
 sFreeze		macro
 	if safe=1
-		dc.b $FF,$84
+		dc.b $FF,$B4
 	endif
     endm
 
 ; FF84 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 sCheck		macro
 	if safe=1
-		dc.b $FF,$88
+		dc.b $FF,$B8
 	endif
     endm
 ; ---------------------------------------------------------------------------------------------

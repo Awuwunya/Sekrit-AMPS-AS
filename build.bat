@@ -9,10 +9,8 @@ REM // run the assembler
 set AS_MSGPATH=win32/as
 set USEANSI=n
 
-set print_err=-E -q
-
 "AMPS/Includer.exe" AS AMPS AMPS/.Data
-"win32/as/asw" -xx -c %print_err% -A -L main.asm
+"win32/as/asw" -xx -q -E -L main.asm
 
 REM // if there were errors, there won't be any main.p output
 IF NOT EXIST main.p goto LABLERROR5

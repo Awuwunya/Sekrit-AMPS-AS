@@ -1,6 +1,6 @@
 SuperSonic_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $06
+	sHeaderTempo	$00FA
 	sHeaderCh	$05, $01
 	sHeaderDAC	SuperSonic_DAC1
 	sHeaderDAC	SuperSonic_DAC2

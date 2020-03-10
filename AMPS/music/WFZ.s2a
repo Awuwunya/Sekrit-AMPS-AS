@@ -1,6 +1,6 @@
 WingFortress_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $78
+	sHeaderTempo	$0088
 	sHeaderCh	$05, $00
 	sHeaderDAC	WingFortress_DAC1
 	sHeaderDAC	WingFortress_DAC2

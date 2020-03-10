@@ -1,6 +1,6 @@
 DeathEgg_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $A0
+	sHeaderTempo	$0060
 	sHeaderCh	$05, $03
 	sHeaderDAC	DeathEgg_DAC1
 	sHeaderDAC	DeathEgg_DAC2

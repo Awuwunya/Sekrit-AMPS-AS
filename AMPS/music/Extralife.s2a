@@ -1,6 +1,6 @@
 ExtraLife_Header:
 	sHeaderInit						; Z80 offset is $D48D
-	sHeaderTempo	$42, $33
+	sHeaderTempo	$4066
 	sHeaderCh	$05, $01
 	sHeaderDAC	ExtraLife_DAC1
 	sHeaderDAC	ExtraLife_DAC2

@@ -1,6 +1,6 @@
 SpecialStage_Header:
 	sHeaderInit						; Z80 offset is $1380
-	sHeaderTempo	$01, $00
+	sHeaderTempo	$0100
 	sHeaderCh	$05, $03
 	sHeaderDAC	SpecialStage_DAC1
 	sHeaderDAC	SpecialStage_DAC2
