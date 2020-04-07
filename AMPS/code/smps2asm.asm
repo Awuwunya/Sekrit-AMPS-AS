@@ -1,11 +1,9 @@
-; ---------------------------------------------------------------------------------------------
-; AMPS - SMPS2ASM macro & equate file.
-;
-; Based on Flamewing's SMPS2ASM, and S1SMPS2ASM by Marc (AKA Cinossu)
-; Reworked and improved by Natsumi
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; AMPS - SMPS2ASM macro & equate file
+; ---------------------------------------------------------------------------
 ; Note Equates
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 	enum nC0=$81,nCs0,nD0,nEb0,nE0,nF0,nFs0,nG0,nAb0,nA0,nBb0,nB0
 	enum nC1=$8D,nCs1,nD1,nEb1,nE1,nF1,nFs1,nG1,nAb1,nA1,nBb1,nB1
@@ -16,9 +14,10 @@
 	enum nC6=$C9,nCs6,nD6,nEb6,nE6,nF6,nFs6,nG6,nAb6,nA6,nBb6,nB6
 	enum nC7=$D5,nCs7,nD7,nEb7,nE7,nF7,nFs7,nG7,nAb7,nA7,nBb7
 	enum nRst=$80, nHiHat=nA6
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Note Equates for PSG4
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 		phase nRst
 		ds.w 1		; rest channel
@@ -31,9 +30,10 @@ nWhite20	ds.w 1		; white noise at pitch $20
 nWhite40	ds.w 1		; white noise at pitch $40
 nWhitePSG3	ds.w 1		; white noise with pitch from PSG3
 n4Last =	*		; used for safe mode
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Header Macros
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 ; Header - Initialize a music file
 sHeaderInit	macro
@@ -50,18 +50,18 @@ sHeaderCh	macro fmc,psgc
 	if "psgc"<>""
 		dc.b psgc-1, fmc-1
 		if fmc>Mus_HeadFM
-			warning "You sure there are so many fm FM channels?"
+			warning "You sure there are so many fmc FM channels?"
 		endif
 
 		if psgc>Mus_PSG
-			warning "You sure there are so many psg PSG channels?"
+			warning "You sure there are so many psgc PSG channels?"
 		endif
 	else
 		dc.b fmc-1
 	endif
     endm
 
-; Header - Set up Tempo
+; Header - Set up tempo
 sHeaderTempo	macro tempo, narg
 	dc.w tempo
 
@@ -74,7 +74,7 @@ sHeaderTempo	macro tempo, narg
 	endif
     endm
 
-; Header - Set priority leve
+; Header - Set priority level
 sHeaderPrio	macro prio
 	dc.b prio
     endm
@@ -113,10 +113,10 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 	dc.w loc-*
 	dc.b (pitch)&$FF,(vol)&$FF
     endm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Macros for PSG instruments
-; ---------------------------------------------------------------------------------------------
-
+; ---------------------------------------------------------------------------
 ; Patches - ADSR data
 ;   mode -> sets the flags used for ADSR. Bit7 is always set.
 ;   atkvol -> Volume to attack to (higher = quieter)
@@ -124,6 +124,7 @@ sHeaderSFX	macro flags,type,loc,pitch,vol
 ;   decayvol -> Volume to decay to (higher = quieter)
 ;   decaydelta -> How fast to decay. 2.6 fixed point format
 ;   releasedelta -> How fast to release. 2.6 fixed point format
+; ---------------------------------------------------------------------------
 
 spADSR		macro name, mode, atkvol, atkdelta, decayvol, decaydelta, releasedelta
 a{"name"} :=	sPatNum
@@ -133,11 +134,12 @@ sPatNum :=	sPatNum+1
 	dc.b atkdelta, atkvol, decaydelta, decayvol, releasedelta
 	dc.b 0
     endm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; Macros for FM instruments
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
-; Patches - Algorithm
+; Patches - Algorithm and patch name
 spAlgorithm	macro val, name
 	if (sPatNum<>0)&(safe=0)
 		; align the patch
@@ -290,18 +292,20 @@ spTL4 :=	op4
 		dc.b "NAT"	; align the patch
 	endif
     endm
-; ---------------------------------------------------------------------------------------------
-; Command Flag Macros and Equates. Based on the original s1smps2asm, and Flamewing's smps2asm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Equates for sPan
+; ---------------------------------------------------------------------------
 
 spNone =	$00
 spRight =	$40
 spLeft =	$80
 spCentre =	$C0
 spCenter =	$C0
-; ---------------------------------------------------------------------------------------------
-; tracker commands
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker commands
+; ---------------------------------------------------------------------------
 
 ; E0xx - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
 sPan		macro pan, ams, fms
@@ -423,7 +427,7 @@ sModAMPS	macro wait, speed, step, count
     endm
 
 sModData	macro wait, speed, step, count
-	dc.b speed, count, wait, step
+	dc.b speed, count, step, wait
 
 	if speed=0
 		warning "Modulation speed is 0! This is not valid for modulation and will instead disable it."
@@ -715,10 +719,12 @@ sCheck		macro
 		dc.b $FF,$B8
 	endif
     endm
-; ---------------------------------------------------------------------------------------------
+; ===========================================================================
+; ---------------------------------------------------------------------------
 ; equates for sNoisePSG
-; ---------------------------------------------------------------------------------------------
+; ---------------------------------------------------------------------------
 
 	enum snOff=$00			; disables PSG3 noise mode.
 	enum snPeri10=$E0,snPeri20,snPeri40,snPeriPSG3
 	enum snWhite10=$E4,snWhite20,snWhite40,snWhitePSG3
+; ---------------------------------------------------------------------------

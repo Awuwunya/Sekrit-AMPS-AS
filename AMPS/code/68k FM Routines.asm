@@ -1,6 +1,6 @@
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Mute all FM channels
+; Hardware mute all FM channels
 ;
 ; thrash:
 ;   all - Because I am too lazy to enumerate them
@@ -45,6 +45,7 @@ dMuteFM:
 	WriteYM2	d2, #$F			; write part 2 to YM
 		addq.w	#4,d2			; go to next Release Rate operator (1 2 3 4)
 		dbf	d3,.oploop		; repeat for each operator
+; ---------------------------------------------------------------------------
 
 		sub.b	d5,d6			; go to next FM channel
 		sub.b	d5,d2			; go to next FM channel
@@ -87,10 +88,12 @@ dUpdateVolFM_SFX:
 		ext.w	d1			; extend it to word
 		bra.s	dUpdateVolFM3		; do NOT add the master volume!
 	endif
+; ---------------------------------------------------------------------------
 
 dUpdateVolFM_Dis:
 		move.w	#$4000,d1		; set volume to max (muted)
 		bra.s	dUpdateVolFM3		; process all effects
+; ---------------------------------------------------------------------------
 
 dUpdateVolFM:
 	if FEATURE_DACFMVOLENV
@@ -121,6 +124,7 @@ dUpdateVolFM3:
 		btst	#cfbVol,(a1)		; test volume update flag
 		beq.s	locret_MuteFM		; branch if no volume update was requested
 	endif
+; ---------------------------------------------------------------------------
 
 dUpdateVolFM2:
 	if FEATURE_DACFMVOLENV
@@ -131,7 +135,7 @@ dUpdateVolFM2:
 
 		moveq	#0,d4
 		move.b	cVoice(a1),d4		; load FM voice ID of the channel to d4
-	dCALC_BANK	0			; go to the Total Level offset of the voice
+	dCALC_BANK	0			; get the voice bank address to a4
 	dCALC_VOICE				; get address of the specific voice to a4
 
 	if FEATURE_UNDERWATER
@@ -164,6 +168,7 @@ dUpdateVolFM2:
 		moveq	#4-1,d3			; prepare 4 operators to d3
 		move.l	sp,a5			; copy stack pointer to a5
 		subq.l	#4,sp			; reserve some space in the stack
+; ---------------------------------------------------------------------------
 
 .tlloop
 		move.b	(a4)+,d5		; get Total Level value from voice to d5
@@ -198,17 +203,19 @@ dUpdateVolFM2:
 .nocap
 		move.b	d5,-(a5)		; write total level to stack
 		dbf	d3,.tlloop		; repeat for each Total Level operator
+; ---------------------------------------------------------------------------
 
 	CheckCue				; check that YM cue is valid
 	InitChYM				; prepare to write to channel
 	stopZ80
+
 	WriteChYM	#$4C, (a5)+		; Total Level: Load operator 4 from stack
 	WriteChYM	#$44, (a5)+		; Total Level: Load operator 2 from stack
 	WriteChYM	#$48, (a5)+		; Total Level: Load operator 3 from stack
 	WriteChYM	#$40, (a5)+		; Total Level: Load operator 1 from stack
+
 	;	st	(a0)			; write end marker
 	startZ80
-
 		move.l	a5,sp			; restore stack pointer
 	if FEATURE_MODTL
 		move.w	d2,a3			; load TL data back from d2
@@ -335,24 +342,27 @@ dAMPSnextFMSFX:
 		jsr	dUpdateVolFM_SFX(pc)	; update FM volume
 
 .next
-		dbf	d0,dAMPSnextFMSFX	; make sure to run all the channels
+		dbf	d0,dAMPSnextFMSFX	; make sure to run all the FM channels
 		jmp	dAMPSdoPSGSFX(pc)	; after that, process SFX PSG channels
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM2(pc)		; send key-off command to YM
+
 		tst.b	d1			; check if note is being played
 		bpl.s	.timer			; if not, it must be a timer. branch
-
 		bsr.w	dGetFreqFM		; get frequency
+
 		move.b	(a2)+,d1		; check next byte
-		bpl.s	.timer			; if positive, process a tiemr too
+		bpl.s	.timer			; if positive, process a timer too
 		subq.w	#1,a2			; if not, then return back
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 1, 0				; reset necessary channel memory
@@ -366,7 +376,7 @@ dAMPSnextFMSFX:
 		jsr	dUpdateVolFM_SFX(pc)	; update FM volume
 
 .noupdate
-		dbf	d0,dAMPSnextFMSFX	; make sure to run all the channels
+		dbf	d0,dAMPSnextFMSFX	; make sure to run all the FM channels
 		jmp	dAMPSdoPSGSFX(pc)	; after that, process SFX PSG channels
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -402,7 +412,7 @@ dAMPSnextFM:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.w	.update			; if timed out, update channel
 
-	dNoteToutFM.w				; handle FM-specific note timeout behavior
+	dGateFM					; handle FM-specific gate behavior
 	dCalcFreq				; calculate channel base frequency
 	dModPorta dAMPSdoPSG, dAMPSnextFM, 0	; run modulation + portamento code
 		bsr.w	dUpdateFreqFM2		; send FM frequency to hardware
@@ -414,24 +424,27 @@ dAMPSnextFM:
 		jsr	dUpdateVolFM(pc)	; update FM volume
 
 .next
-		dbf	d0,dAMPSnextFM		; make sure to run all the channels
+		dbf	d0,dAMPSnextFM		; make sure to run all the FM channels
 		jmp	dAMPSdoPSG(pc)		; after that, process music PSG channels
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker				; process tracker
 		jsr	dKeyOffFM(pc)		; send key-off command to YM
-		tst.b	d1			; check if note is being played
-		bpl.s	.timer			; if not, it must be a timer. branch
 
+		tst.b	d1			; check if note is being played
+		bpl.s	.timer			; if not, it must be a timer. Branch
 		bsr.w	dGetFreqFM		; get frequency
+
 		move.b	(a2)+,d1		; check next byte
-		bpl.s	.timer			; if positive, process a tiemr too
+		bpl.s	.timer			; if positive, process a timer too
 		subq.w	#1,a2			; if not, then return back
 		bra.s	.pcnote			; do some extra clearing
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 0, 0				; reset necessary channel memory
@@ -445,7 +458,7 @@ dAMPSnextFM:
 		jsr	dUpdateVolFM(pc)	; update FM volume
 
 .noupdate
-		dbf	d0,dAMPSnextFM		; make sure to run all the channels
+		dbf	d0,dAMPSnextFM		; make sure to run all the FM channels
 		jmp	dAMPSdoPSG(pc)		; after that, process music PSG channels
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -464,6 +477,7 @@ dUpdateFreqFM:
 		bne.s	.norest			; if 0, this channel should be resting
 		bset	#cfbRest,(a1)		; set channel resting flag
 		rts
+; ---------------------------------------------------------------------------
 
 .norest
 	if FEATURE_MODENV
@@ -485,10 +499,11 @@ dUpdateFreqFM:
 		beq.s	dUpdateFreqFM2		; if not, branch
 		add.w	cModFreq(a1),d2		; add channel modulation frequency offset to d2
 	endif
+; ---------------------------------------------------------------------------
 
 dUpdateFreqFM2:
 		btst	#cfbInt,(a1)		; is the channel interrupted by SFX?
-		bne.w	locret_UpdFreqFM	; if is, do not update frequency anyway
+		bne.w	locret_UpdFreqFM	; if is, do not update frequency
 
 dUpdateFreqFM3:
 		btst	#cfbRest,(a1)		; is this channel resting
@@ -498,7 +513,7 @@ dUpdateFreqFM3:
 		bne.s	locret_UpdFreqFM	; if is, skip
 	endif
 
-		move.w	d2,d3			; copy frequency to d1
+		move.w	d2,d3			; copy frequency to d3
 		lsr.w	#8,d3			; shift upper byte into lower byte
 	CheckCue				; check that YM cue is valid
 
@@ -520,6 +535,7 @@ dUpdateFreqFM3:
 .smfreql	dc.b $A2, $A9, $A8, $AA		; registers for FM3 frequency MSB
 .smfreqm	dc.b $A6, $AD, $AC, $AE		; registers for FM3 frequency LSB
 	endif
+; ---------------------------------------------------------------------------
 
 .nosm
 	InitChYM				; prepare to write to channel
@@ -548,6 +564,7 @@ dGetFreqFM:
 		bset	#cfbRest,(a1)		; set channel resting flag
 		clr.w	cFreq(a1)		; set base frequency to 0
 		rts
+; ---------------------------------------------------------------------------
 
 .norest
 		add.b	cPitch(a1),d1		; add pitch offset to note
@@ -588,6 +605,7 @@ dKeyOffSM:
 
 dKeyOffFM3:
 	endif
+; ---------------------------------------------------------------------------
 
 		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.rts			; if so, do not note off
@@ -599,7 +617,7 @@ dKeyOffFM3:
 	WriteYM1	d4, d3			; key on: turn all operators off for channel
 	WriteYM1	d4, d3			; the reason we do this, is to work around some YM2612 bug or quirk
 	WriteYM1	d4, d3			; if you key off and key on too quickly, the sound is somewhat wrong
-	WriteYM1	d4, d3			; this was noticeable on few SFX, particularly the death sfx
+	WriteYM1	d4, d3			; this was noticeable on few SFX, particularly the death SFX
 	;	st	(a0)			; I am not sure why it works, but I am gonna be honest, I don't care enough to find out
 	startZ80
 
@@ -620,6 +638,7 @@ dFreqFM:dc.w								       $025E; Octave-1 - (80)
 	dc.w $3284,$32AB,$32D3,$32FE,$332D,$335C,$338F,$33C5,$33FF,$343C,$347C,$3A5E; Octave 6 - (c9 - D4)
 	dc.w $3A84,$3AAB,$3AD3,$3AFE,$3B2D,$3B5C,$3B8F,$3BC5,$3BFF,$3C3C,$3C7C	    ; Octave 7 - (D5 - DF)
 dFreqFM_:
+
 	if safe=1				; in safe mode, we have extra debug data
 .x :=		$100|((dFreqFM_-dFreqFM)/2)	; to check if we played an invalid note
 		rept $80-((dFreqFM_-dFreqFM)/2)	; and if so, tell us which note it was

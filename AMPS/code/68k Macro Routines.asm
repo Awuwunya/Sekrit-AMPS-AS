@@ -1,21 +1,12 @@
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Note timout handler macro
+; Gate handler macro for DAC
 ; ---------------------------------------------------------------------------
 
-dNoteToutHandler	macro
-		tst.b	cGateCur(a1)		; check if timer is 0
-		beq.s	.endt			; if is, do not timeout
+dGateDAC	macro
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
 		subq.b	#1,cGateCur(a1)		; decrease delay by 1
 		bne.s	.endt			; if still not 0, branch
-    endm
-; ===========================================================================
-; ---------------------------------------------------------------------------
-; Note timout handler macro for DAC
-; ---------------------------------------------------------------------------
 
-dNoteToutDAC	macro
-	dNoteToutHandler			; include timeout handler
 		moveq	#0,d3			; play stop sample
 		bsr.w	dNoteOnDAC2		; ''
 		bra.w	.next			; jump to next track
@@ -24,11 +15,15 @@ dNoteToutDAC	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Note timout handler macro for FM
+; Gate handler macro for FM
 ; ---------------------------------------------------------------------------
 
-dNoteToutFM	macro
-	dNoteToutHandler			; include timeout handler
+dGateFM		macro
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
+		subq.b	#1,cGateCur(a1)		; decrease delay by 1
+		bne.s	.endt			; if still not 0, branch
+
 		bset	#cfbRest,(a1)		; set track to resting
 		bsr.w	dKeyOffFM		; key off FM
 		bra.w	.next			; jump to next track
@@ -36,11 +31,14 @@ dNoteToutFM	macro
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Note timout handler macro for PSG
+; Gate handler macro for PSG
 ; ---------------------------------------------------------------------------
 
-dNoteToutPSG	macro	addr
-	dNoteToutHandler			; include timeout handler
+dGatePSG	macro	addr
+		tst.b	cGateCur(a1)		; check if gate timer is 0
+		beq.s	.endt			; if is, skip
+		subq.b	#1,cGateCur(a1)		; decrease delay by 1
+		bne.s	.endt			; if still not 0, branch
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 
 		if FEATURE_PSGADSR
@@ -58,8 +56,8 @@ dNoteToutPSG	macro	addr
     endm
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
-; Macro for calculating the current frequency (without modulation) into d2.
-; Used if user wants to add extra pitch effects such as pitch slides.
+; Macro for calculating the current frequency (without modulation) into d2
+; Used if user wants to add extra pitch effects such as pitch slides
 ; ---------------------------------------------------------------------------
 
 dCalcFreq	macro
@@ -96,29 +94,30 @@ dModPorta	macro jump,loop,type
 dPortamento	macro jump,loop,type
 	if FEATURE_PORTAMENTO
 		if FEATURE_MODULATION=0
-			tst.b	cPortaSpeed(a1)		; check if portamento is active
-			bne.s	.doporta		; if not, branch
+			tst.b	cPortaSpeed(a1)	; check if portamento is active
+			bne.s	.doporta	; if is, branch
 
 			if FEATURE_MODENV
-				tst.b	cModEnv(a1)	; check if modulation envelope ID is not 0
-				bne.s	.nowrap		; if so, update frequency nonetheless
+				tst.b	cModEnv(a1); check if modulation envelope ID is 0
+				bne.s	.nowrap	; if not, update frequency nonetheless
 			endif
 
 			dGenLoops 1, jump,loop,type
 		endif
+; ---------------------------------------------------------------------------
 
 .doporta
-		move.w	cPortaFreq(a1),d5	; load portamento frequency to d5
+		move.w	cPortaFreq(a1),d5	; load portamento frequency offset to d5
 		beq.s	.nochk			; branch if 0 already
 		bmi.s	.ppos			; branch if negative
 
 		add.w	cPortaDisp(a1),d5	; add displacement to d5
-		bpl.s	.noover			; branch if overflow did not occur
+		bpl.s	.noover			; branch if overflow did not occur (positive to negative)
 		bra.s	.pclr
 
 .ppos
 		add.w	cPortaDisp(a1),d5	; add displacement to d5
-		bmi.s	.noover			; branch if overflow did not occur
+		bmi.s	.noover			; branch if overflow did not occur (negative to positive)
 
 .pclr
 		moveq	#0,d5			; if it did, clear displacement
@@ -129,9 +128,10 @@ dPortamento	macro jump,loop,type
 .nochk
 		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
 		bne.s	.nowrap			; if yes, do not bother with this
-		add.w	d5,d2			; add it to the current pitch
+		add.w	d5,d2			; add it to the current frequency
+; ---------------------------------------------------------------------------
 
-		if (type=0)|(type=1)
+		if (type=0)|(type=1)		; the following code skips from $x4C0 to $x25D of next octave, and vice versa
 			move.w	d2,d5		; special FM code to skip over some frequencies, because it sounds bad
 			move.w	#$800+$25D-$4C0,d4; prepare value into d4
 
@@ -184,12 +184,13 @@ dModulate	macro jump,loop,type
 			bne.s	.porta		; if so, update frequency nonetheless
 		endif
 	dGenLoops 0, jump,loop,type
+; ---------------------------------------------------------------------------
 
 .started
 		subq.b	#1,cModSpeed(a1)	; decrease modulation speed counter
 		bne.s	.noret			; if there's still delay left, update vol and return
 		movea.l	cMod(a1),a4		; get modulation data offset to a1
-		move.b	(a4)+,cModSpeed(a1)	; reset modulation speed counter
+		move.b	(a4)+,cModSpeed(a1)	; reload modulation speed counter
 
 		tst.b	cModCount(a1)		; check if this was the last step
 		bne.s	.norev			; if was not, do not reverse
@@ -205,7 +206,7 @@ dModulate	macro jump,loop,type
 		subq.b	#1,cModCount(a1)	; decrease step counter
 		btst	#cfbFreqFrz,(a1)	; check if frequency is frozen
 		bne.s	.porta			; if yes, do not bother with this
-		add.w	d5,d2			; add to channel base frequency
+		add.w	d5,d2			; add to frequency
 
 .porta
 	endif
@@ -253,9 +254,10 @@ dDoTracker	macro	nf
 		move.b	(a2)+,d1		; get a byte from tracker
 		cmpi.b	#$E0,d1			; is this a command?
 		blo.s	.notcomm		; if not, continue
-		jsr	dCommands(pc)		; run the condition flag
+
+		jsr	dCommands(pc)		; run the tracker command routine
 		bra.s	.data			; for most commands, use this branch to loop
-		bra.s	.next			; however, for example sStop will make us return here.
+		bra.s	.next			; however, for example, sStop will make us return here
 
 .notcomm
 	if FEATURE_PORTAMENTO&("nf"=="")
@@ -301,33 +303,44 @@ dProcNote	macro	sfx, chan
 		neg.w	d2			; store displacement as a negative value
 		move.w	d2,cPortaFreq(a1)	; save as new frequency displacement
 		neg.w	d2			; turn positive again for calculations
+; ---------------------------------------------------------------------------
+; There is some frequency overlap within a single octave, so that a
+; frequency from one octave may sound the same as a difference frequency
+; from another octave. This results in us needing to skip some parts of
+; the frequency range. Seems like skipping the frequencies
+; <$25D and >$4C0 works the best.
+; ---------------------------------------------------------------------------
 
 		if chan=0
 		; for FM, process frequency difference differently
 			move.w	#$800+$25D-$4C0,d3; get frequency addition to d3
-			move.w	d2,d1		; copy the difference to d2
+			move.w	d2,d1		; copy the frequency difference to d2
 			bpl.s	.pposf		; branch if positive
 			neg.w	d1		; else, negate it
 			neg.w	d3		; also negate addition to become substraction
 
 .pposf
-			and.w	#$F800,d1	; get only the octave difference
+			and.w	#$F800,d1	; get only the octave difference for frequency difference
 			beq.s	.skipfd		; if 0, branch
 
 .pgetf
-			sub.w	d3,d2		; account for skipping part of the frequency stuff
+			sub.w	d3,d2		; account for skipping part of the frequency range of an octave
 			sub.w	#$800,d1	; check if octave difference is 0 now
 			bne.s	.pgetf		; if not, loop
 
 .skipfd
 		endif
 
-		ext.l	d2			; extend to long word (for divs)
+		ext.l	d2			; extend frequency displacement to long word (for divs)
 		moveq	#0,d1
 		move.b	cPortaSpeed(a1),d1	; load portamento speed to d1
-		divs	d1,d2			; divide offset by speed count
+		divs	d1,d2			; divide offset by speed
 
-	; make sure that the frequency displacement is never 0
+; ---------------------------------------------------------------------------
+; make sure that the frequency displacement is never 0. If it is, the
+; note will never change! This could happen if the frequency
+; difference is very small and portamento speed is really fast
+; ---------------------------------------------------------------------------
 		tst.w	d2			; check if resulting displacement is 0
 		bne.s	.portanz		; branch if not
 		moveq	#1,d2			; prepare 1; forwards portamento
@@ -341,6 +354,7 @@ dProcNote	macro	sfx, chan
 
 .noporta
 	endif
+; ---------------------------------------------------------------------------
 
 	if ((chan=1)|(chan=4))&FEATURE_PSGADSR
 		btst	#mfbHold,mExtraFlags.w	; check if note is held
@@ -353,7 +367,7 @@ dProcNote	macro	sfx, chan
 
 		lea	dPhaseTableADSR(pc),a4	; load phase table to a4
 		move.b	3(a4,d4.w),d4		; load the initial flags to d4
-		move.b	d4,adFlags(a3)		; and save to ADSR as well...
+		move.b	d4,adFlags(a3)		; and save to ADSR as well
 
 		and.b	#adpMask,d4		; get only phase to d4
 		cmp.b	#adpSustain,d4		; check if sustain or release
@@ -367,6 +381,7 @@ dProcNote	macro	sfx, chan
 
 .noadsrf
 	endif
+; ---------------------------------------------------------------------------
 
 	if FEATURE_MODULATION|(sfx=0)|(chan=1)|(chan=4)
 		btst	#mfbHold,mExtraFlags.w	; check if we are holding
@@ -378,17 +393,18 @@ dProcNote	macro	sfx, chan
 	endif
 
 	if sfx=0
-		move.b	cGateMain(a1),cGateCur(a1); copy note timeout value
+		move.b	cGateMain(a1),cGateCur(a1); copy gate value
 	endif
 
 	if FEATURE_DACFMVOLENV|(chan=1)|(chan=4)
-		clr.b	cEnvPos(a1)		; clear envelope position if PSG channel
+		clr.b	cEnvPos(a1)		; clear envelope position if PSG channel or FEATURE_DACFMVOLENV enabled
 	endif
 
 	if FEATURE_MODENV
 		clr.b	cModEnvPos(a1)		; clear modulation envelope position
 		clr.b	cModEnvSens(a1)		; clear modulation envelope sensitivity (set to 1x)
 	endif
+; ---------------------------------------------------------------------------
 
 	; handle modulation for each TLmod
 	if (chan=0)&(FEATURE_MODTL<>0)
@@ -410,13 +426,14 @@ dProcNote	macro	sfx, chan
 			lsr.b	#1,d1			; halve it
 			move.b	d1,cModCount+.of(a3)	; save as the current number of steps
 
-			move.b	(a4)+,cModDelay+.of(a3)	; copy delay
 			move.b	(a4)+,cModStep+.of(a3)	; copy step offset
+			move.b	(a4)+,cModDelay+.of(a3)	; copy delay
 
 .open
 .op :=			.op+1
 		endm
 	endif
+; ---------------------------------------------------------------------------
 
 	if FEATURE_MODULATION
 		tst.b	cModSpeed(a1)		; check if modulation is enabled
@@ -430,8 +447,8 @@ dProcNote	macro	sfx, chan
 		lsr.b	#1,d1			; halve it
 		move.b	d1,cModCount(a1)	; save as the current number of steps
 
-		move.b	(a4)+,cModDelay(a1)	; copy delay
 		move.b	(a4)+,cModStep(a1)	; copy step offset
+		move.b	(a4)+,cModDelay(a1)	; copy delay
 	endif
 .endpn
     endm
@@ -442,7 +459,7 @@ dProcNote	macro	sfx, chan
 
 dTrackNoteDAC	macro
 		btst	#cfbMode,(a1)		; check if we are on pitch mode
-		bne.s	.pitch			; if so, load pitch
+		bne.s	.pitch			; if so, load frequency
 		move.b	d1,cSample(a1)		; else, save as a sample
 		bra.s	.cont
 
@@ -479,6 +496,7 @@ dKeyOnFM	macro	sfx
 
 .nosm
 	endif
+; ---------------------------------------------------------------------------
 
 		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.k			; if so, do not note on
@@ -486,7 +504,7 @@ dKeyOnFM	macro	sfx
 		bne.s	.k			; if so, do not note on
 
 		moveq	#$F0,d3			; turn all FM operators on
-		or.b	cType(a1),d3		; or channel type bits
+		or.b	cType(a1),d3		; OR channel type bits to d3
 	CheckCue				; check that cue is valid
 	stopZ80
 	WriteYM1	#$28, d3		; Key on: turn all FM operators on
@@ -572,6 +590,7 @@ dGetFreqPSG	macro
 			jsr	dMutePSGmus(pc)	; mute PSG channel
 		endif
 		bra.s	.freqgot
+; ---------------------------------------------------------------------------
 
 .norest
 		add.b	cPitch(a1),d1		; add pitch offset to note
@@ -595,7 +614,7 @@ dStopChannel	macro	stop
 		bmi.s	.mutePSG		; if yes, mute it
 
 		btst	#ctbDAC,cType(a1)	; check if this was a DAC channel
-		bne.s	.muteDAC		; if we are, skip
+		bne.s	.muteDAC		; if we are, mute that
 
 	if stop<=0
 		jsr	dKeyOffFM(pc)		; send key-off command to YM

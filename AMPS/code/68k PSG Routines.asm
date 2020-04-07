@@ -31,6 +31,7 @@ dAMPSnextPSGSFX:
 .next
 		dbf	d0,dAMPSnextPSGSFX	; make sure to run all the channels
 		jmp	dAMPSdoPSG4SFX(pc)	; after that, check tracker and end loop
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
@@ -39,19 +40,22 @@ dAMPSnextPSGSFX:
 		bpl.s	.timer			; if not, it must be a timer. Branch
 
 	dGetFreqPSG				; get PSG frequency
-		move.b	(a2)+,d1		; check if next note is a timer
-		bpl.s	.timer			; if yes, handle timer
+		move.b	(a2)+,d1		; check if next byte is a timer
+		bpl.s	.timer			; if yes, handle it
 		subq.w	#1,a2			; else, undo the increment
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 1, 1				; reset necessary channel memory
 		bsr.w	dUpdateFreqPSG		; update hardware frequency
 		jsr	dEnvelopePSG_SFX(pc)	; run envelope program
 		dbf	d0,dAMPSnextPSGSFX	; make sure to run all the channels
+
+	; continue to check tracker and end loop
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Music PSG channel loop
@@ -73,6 +77,7 @@ dAMPSdoPSG4SFX:
 
 .next
 		jmp	dCheckTracker(pc)	; after that, process SFX DAC channels
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
@@ -83,13 +88,14 @@ dAMPSdoPSG4SFX:
 		lea	dNotesPSG4(pc),a4	; load notes table to a4
 		jsr	(a4,d1.w)		; execute specific code for note
 
-		move.b	(a2)+,d1		; check if next note is a timer
-		bpl.s	.timer			; if yes, handle timer
+		move.b	(a2)+,d1		; check if next byte is a timer
+		bpl.s	.timer			; if yes, handle it
 		subq.w	#1,a2			; else, undo the increment
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 1, 4				; reset necessary channel memory
@@ -134,7 +140,7 @@ dAMPSnextPSG:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.w	.update			; if timed out, update channel
 
-	dNoteToutPSG				; handle PSG-specific note timeout behavior
+	dGatePSG				; handle PSG-specific gate behavior
 	dCalcFreq				; calculate channel base frequency
 	dModPorta .endm, -1, -1			; run modulation + portamento code
 		bsr.w	dUpdateFreqPSG2		; if frequency needs changing, do it
@@ -143,12 +149,13 @@ dAMPSnextPSG:
 		jsr	dEnvelopePSG(pc)	; run envelope program
 
 .next
-		dbf	d0,dAMPSnextPSG		; make sure to run all the channels
+		dbf	d0,dAMPSnextPSG		; make sure to run all the PSG channels
 	if FEATURE_PSG4
 		jmp	dAMPSdoPSG4(pc)		; after that, process PSG4 channel
 	else
 		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 	endif
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
@@ -157,13 +164,14 @@ dAMPSnextPSG:
 		bpl.s	.timer			; if not, it must be a timer. branch
 
 	dGetFreqPSG				; get PSG frequency
-		move.b	(a2)+,d1		; check if next note is a timer
-		bpl.s	.timer			; if yes, handle timer
+		move.b	(a2)+,d1		; check if next byte is a timer
+		bpl.s	.timer			; if yes, handle it
 		subq.w	#1,a2			; else, undo the increment
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 0, 1				; reset necessary channel memory
@@ -174,9 +182,9 @@ dAMPSnextPSG:
 	endif
 
 		jsr	dEnvelopePSG(pc)	; run envelope program
-		dbf	d0,dAMPSnextPSG		; make sure to run all the channels
+		dbf	d0,dAMPSnextPSG		; make sure to run all the PSG channels
 	if FEATURE_PSG4=0
-		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels'
+		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
 	else
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -195,28 +203,31 @@ dAMPSdoPSG4:
 		subq.b	#1,cDuration(a1)	; decrease note duration
 		beq.s	.update			; if timed out, update channel
 
-	dNoteToutPSG	dAMPSdoSFX		; handle PSG-specific note timeout behavior
+	dGatePSG	dAMPSdoSFX		; handle PSG-specific gate behavior
 		jsr	dEnvelopePSG(pc)	; run envelope program
 
 .next
 		jmp	dAMPSdoSFX(pc)		; after that, process SFX DAC channels
+; ---------------------------------------------------------------------------
 
 .update
 		and.b	#$FF-(1<<cfbFreqFrz)-(1<<cfbRest),(a1); clear rest and frequency freeze flags
 	dDoTracker	4			; process tracker
 		tst.b	d1			; check if note is being played
-		bpl.s	.timer			; if not, it must be a timer. branch
+		bpl.s	.timer			; if not, it must be a timer. Branch
+
 		add.b	d1,d1			; double d1
 		lea	dNotesPSG4(pc),a4	; load notes table to a4
 		jsr	(a4,d1.w)		; execute specific code for note
 
-		move.b	(a2)+,d1		; check if next note is a timer
-		bpl.s	.timer			; if yes, handle timer
+		move.b	(a2)+,d1		; check if next byte is a timer
+		bpl.s	.timer			; if yes, handle it
 		subq.w	#1,a2			; else, undo the increment
 		bra.s	.pcnote			; do not calculate duration
 
 .timer
 		move.b	d1,cLastDur(a1)		; save as the new duration
+; ---------------------------------------------------------------------------
 
 .pcnote
 	dProcNote 0, 4				; reset necessary channel memory
@@ -306,7 +317,7 @@ dUpdateFreqPSG:
 	else
 		rts
 	endif
-; ===========================================================================
+; ---------------------------------------------------------------------------
 
 dUpdateFreqPSG4:
 	if FEATURE_MODENV
@@ -328,6 +339,7 @@ dUpdateFreqPSG4:
 		beq.s	dUpdateFreqPSG2		; if not, branch
 		add.w	cModFreq(a1),d2		; add modulation frequency offset to d2
 	endif
+; ---------------------------------------------------------------------------
 
 dUpdateFreqPSG2:
 		btst	#cfbInt,(a1)		; is channel interrupted by sfx?
@@ -343,7 +355,7 @@ dUpdateFreqPSG3:
 		moveq	#ctPSG3,d6		; load PSG3 type value instead
 
 .notPSG4
-		move.w	d2,d5			; copy frequency to d1
+		move.w	d2,d5			; copy frequency to d5
 		andi.b	#$F,d5			; get the low nibble of it
 		or.b	d5,d6			; combine with channel type
 ; ---------------------------------------------------------------------------
@@ -394,10 +406,12 @@ dEnvelopePSG_SFX:
 		ext.w	d1			; extend to a word
 		bra.s	dEnvelopePSG2		; do not add master volume
 	endif
+; ---------------------------------------------------------------------------
 
 dEnvelopePSG_Dis:
 		move.w	#$4000,d1		; set volume to max (muted)
 		bra.s	dEnvelopePSG2		; process all effects
+; ---------------------------------------------------------------------------
 
 dEnvelopePSG:
 	if FEATURE_PSGADSR=0
@@ -414,6 +428,7 @@ dEnvelopePSG:
 		move.b	cVolume(a1),d4		; load channel volume to d4
 		ext.w	d4			; extend to word
 		add.w	d4,d1			; add channel volume to d1
+; ---------------------------------------------------------------------------
 
 dEnvelopePSG2:
 	if FEATURE_PSGADSR
@@ -431,9 +446,10 @@ dEnvelopePSG2:
 
 .ckflag
 	if FEATURE_PSGADSR=0
-		btst	#cfbVol,(a1)		; check if volume update was requested
-		beq.s	locret_UpdVolPSG	; branch if not
+		btst	#cfbVol,(a1)		; test volume update flag
+		beq.s	locret_UpdVolPSG	; branch if no volume update was requested
 	endif
+
 	; continue to update PSG volume
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -459,11 +475,12 @@ dUpdateVolPSG:
 
 		cmp.w	#mSFXDAC1,a1		; check if this is a SFX channel
 		bhs.s	.send			; if so, update volume
-		tst.b	cGateMain(a1)		; check if note timeout is active
+		tst.b	cGateMain(a1)		; check if gate is active
 		beq.s	.send			; if not, update volume
 		tst.b	cGateCur(a1)		; is note stopped already?
 		beq.s	locret_UpdVolPSG	; if is, do not update
 	endif
+; ---------------------------------------------------------------------------
 
 .send
 		cmp.w	#$7F,d1			; check if volume is out of range
@@ -522,6 +539,7 @@ dFreqPSG:dc.w $03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03FF,$03F7,$03BE,
 	dc.w  $001B,$001A,$0018,$0017,$0016,$0015,$0013,$0012,$0011		     ; Octave 8 - (B9 - D1)
 	dc.w  $0000								     ; Note (D2)
 dFreqPSG_:
+
 	if safe=1				; in safe mode, we have extra debug data
 .x :=		$100|((dFreqPSG_-dFreqPSG)/2)	; to check if we played an invalid note
 		rept $80-((dFreqPSG_-dFreqPSG)/2); and if so, tell us which note it was

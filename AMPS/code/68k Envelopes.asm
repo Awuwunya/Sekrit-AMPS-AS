@@ -31,6 +31,7 @@ dModEnvProg:
 
 		moveq	#0,d4
 		moveq	#0,d5
+; ---------------------------------------------------------------------------
 
 dModEnvProg2:
 		move.b	cModEnvPos(a1),d5	; get envelope position to d5
@@ -100,7 +101,8 @@ dModEnvCommand:
 		add.b	d4,cModEnvSens(a1)	; add to modulation envelope sensitivity
 ; ---------------------------------------------------------------------------
 
-.ignore		addq.b	#2,cModEnvPos(a1)	; skip the command and the next byte
+.ignore
+		addq.b	#2,cModEnvPos(a1)	; skip the command and the next byte
 		jmp	dModEnvProg2(pc)	; run the program again
 ; ---------------------------------------------------------------------------
 
@@ -135,6 +137,7 @@ dVolEnvProg:
 
 		move.l	(a2,d4.w),a2		; get pointer to volume envelope data
 		moveq	#0,d4
+; ---------------------------------------------------------------------------
 
 dVolEnvProg2:
 		move.b	cEnvPos(a1),d4		; get envelope position to d4
