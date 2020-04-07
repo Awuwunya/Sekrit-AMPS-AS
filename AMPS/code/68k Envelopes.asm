@@ -47,6 +47,7 @@ dModEnvProg2:
 
 		move.b	cModEnvSens(a1),d5	; load sensitivity to d1 (unsigned value - effective range is ~ -$7000 to $8000)
 		addq.w	#1,d5			; increment sensitivity by 1 (range of 1 to $100)
+		ext.w	d4			; extend to displacement to a word
 		muls	d5,d4			; signed multiply loaded value with sensitivity
 		add.w	d4,d2			; add the frequency to channel frequency
 
@@ -204,12 +205,14 @@ dEnvCommand:
 
 .stop
 		bset	#cfbRest,(a1)		; set channel resting bit
-	dStopChannel	0			; stop channel operation
 
-	if FEATURE_PSGADSR=0
+	if FEATURE_PSGADSR
+		dStopChannel	1		; stop channel operation
+	else
+		dStopChannel	0		; stop channel operation
 		moveq	#0,d4			; set Z flag to 1
-	endif
 		rts
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Routine for running TL envelope programs
@@ -283,7 +286,7 @@ dModulateTL2:
 .value
 		addq.b	#1,toEnvPos(a3)		; increment envelope position
 		ext.w	d4			; extend volume to a word
-		add.b	d4,d5			; add envelope volume to d5
+		add.w	d4,d5			; add envelope volume to d5
 
 locret_dModulateTL:
 		rts
@@ -331,7 +334,7 @@ dEnvCommandTL:
 ; ---------------------------------------------------------------------------
 
 .stop
-		moveq	#$7F,d5			; set volume to $7F
+		move.w	#$4000,d5		; set volume to maximum
 		rts
 	endif
 ; ===========================================================================
@@ -358,7 +361,7 @@ dProcessADSR:
 		bne.s	.normal			; if 0, emulate default behaviour
 		btst	#cfbRest,(a1)		; check if resting
 		beq.s	.rts			; if not, do not add to volume
-		moveq	#$7F,d1			; set to max volume
+		move.w	#$4000,d1		; set to max volume
 
 .rts
 		rts
@@ -423,7 +426,7 @@ dProcessADSR:
 		add.w	d4,(a3)			; add to volume
 		bpl.s	.sustain		; if not max volume, branch
 		move.b	#$7F,(a3)		; force max volume
-		moveq	#$7F,d1			; mute as well
+		move.w	#$4000,d1		; mute as well
 		rts
 ; ---------------------------------------------------------------------------
 

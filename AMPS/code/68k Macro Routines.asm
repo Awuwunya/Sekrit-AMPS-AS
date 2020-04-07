@@ -31,7 +31,7 @@ dNoteToutFM	macro
 	dNoteToutHandler			; include timeout handler
 		bset	#cfbRest,(a1)		; set track to resting
 		bsr.w	dKeyOffFM		; key off FM
-		bra	.next			; jump to next track
+		bra.w	.next			; jump to next track
 .endt
     endm
 ; ===========================================================================
@@ -343,7 +343,7 @@ dProcNote	macro	sfx, chan
 	endif
 
 	if ((chan=1)|(chan=4))&FEATURE_PSGADSR
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.w	.endpn			; if yes, skip dis
 		btst	#cfbRest,(a1)		; check if resting
 		bne.s	.noadsrf		; if yes, skip dis
@@ -369,7 +369,7 @@ dProcNote	macro	sfx, chan
 	endif
 
 	if FEATURE_MODULATION|(sfx=0)|(chan=1)|(chan=4)
-		btst	#cfbHold,(a1)		; check if we are holding
+		btst	#mfbHold,mExtraFlags.w	; check if we are holding
 		if (chan=0)&(FEATURE_MODTL<>0)
 			bne.w	.endpn		; if we are, branch
 		else
@@ -480,13 +480,13 @@ dKeyOnFM	macro	sfx
 .nosm
 	endif
 
-		btst	#cfbHold,(a1)		; check if note is held
+		btst	#mfbHold,mExtraFlags.w	; check if note is held
 		bne.s	.k			; if so, do not note on
 		btst	#cfbRest,(a1)		; check if channel is resting
 		bne.s	.k			; if so, do not note on
 
-		move.b	cType(a1),d3		; get channel type bits
-		ori.b	#$F0,d3			; turn all FM operators on
+		moveq	#$F0,d3			; turn all FM operators on
+		or.b	cType(a1),d3		; or channel type bits
 	CheckCue				; check that cue is valid
 	stopZ80
 	WriteYM1	#$28, d3		; Key on: turn all FM operators on
@@ -655,4 +655,4 @@ dResetADSR	macro areg, dreg, mode
 		endm
 	endif
     endm
-; ===========================================================================
+; ---------------------------------------------------------------------------

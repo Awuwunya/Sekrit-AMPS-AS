@@ -153,7 +153,7 @@ dPlaySnd_Unpause:
 
 .skipsfx
 		adda.w  d3,a1			; go to next channel
-		dbf     d0,.sfxloop		; repeat for all SFX FM channel
+		dbf     d0,.sfxloop		; repeat for all SFX FM channels
 ; ---------------------------------------------------------------------------
 ; Since the DAC channels have or based panning behavior, we need this
 ; piece of code to update its panning
@@ -286,21 +286,29 @@ dPlaySnd_Music:
 .noback
 	endif
 ; ---------------------------------------------------------------------------
-; Earlier we used to stop the channels immediately, but due to requiring
-; the channel back-up feature, this was moved here instead. It still works
-; out the exact same though...
-; ---------------------------------------------------------------------------
 
 		jsr	dStopMusic(pc)		; mute hardware and reset all driver memory
 		jsr	dResetVolume(pc)	; reset volumes and end any fades
+		move.b	#0,mMusicFlags.w	; set default music flags
 
+		btst	#mfbBlockUW,(a2)	; check if underwater mode was blocked
+		beq.s	.nouwd			; if not, skip
+		or.b	#1<<mfbBlockUW,mMusicFlags.w; disable underwater mode
+		bra.s	.nouwo			; do not enable
+
+.nouwd
+		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		beq.s	.nouwo			; branch if no
+		or.b	#1<<mfbWater,mMusicFlags.w; set underwater mode as enabled
+
+.nouwo
 		and.b	#$FF-(1<<mfbNoPAL),mFlags.w; enable PAL fix
 		move.w	(a2)+,d3		; load song tempo to d3
 		bpl.s	.noPAL			; branch if the loaded value was positive
 		or.b	#1<<mfbNoPAL,mFlags.w	; disable PAL fix
 
 .noPAL
-		and.w	#$3FFF,d3		; clear extra bits
+		and.w	#$0FFF,d3		; clear extra bits
 		move.w	d3,d6			; copy to d6
 		add.w	(sp)+,d6		; add stored tempo from stack
 		move.w	d6,mTempoSpeed.w	; save d6 as speed tempo
@@ -553,6 +561,18 @@ dPlaySnd_SFX:
 ; problem once again.
 ; ---------------------------------------------------------------------------
 
+		moveq	#0,d6			; prepare extra flags to none
+		btst	#mfbBlockUW,(a1,d1.w)	; check if disable underwater is set
+		beq.s	.nouwd			; branch if not
+		moveq	#1<<mfbBlockUW,d6	; set underwater mode as blocked
+		bra.s	.nouwo
+
+.nouwd
+		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		beq.s	.nouwo			; branch if no
+		moveq	#1<<mfbWater,d6		; set underwater mode as enabled
+
+.nouwo
 		tst.b	(a1,d1.w)		; check if this sound effect is continously looping
 		bpl.s	.nocont			; if not, skip
 		clr.b	mContCtr.w		; reset continous sfx counter
@@ -576,7 +596,6 @@ dPlaySnd_SFX:
 		moveq	#0,d0
 		move.b	(a2)+,d5		; load sound effect priority to d5
 		move.b	(a2)+,d0		; load number of SFX channels to d0
-		moveq	#cSizeSFX,d6		; prepare SFX channel size to d6
 ; ---------------------------------------------------------------------------
 ; The reason why we delay PSG by 1 extra frame, is because of Dual PCM.
 ; It adds a delay of 1 frame to DAC and FM due to the YMCue, and PCM
@@ -665,7 +684,7 @@ dPlaySnd_SFX:
 		clr.w	(a3)			; if channel size can not be divided by 4, clear extra word
 	endif
 
-		move.w	(a2)+,(a1)		; load channel flags and type
+		move.l	(a2)+,(a1)		; load channel flags, type, pitch offset and channel volume
 		move.b	d5,cPrio(a1)		; set channel priority
 		move.b	d2,cDuration(a1)	; reset channel duration
 
@@ -676,7 +695,11 @@ dPlaySnd_SFX:
 		AMPS_Debug_PlayTrackSFX2	; make sure the tracker address is valid
 	endif
 
-		move.w	(a2)+,cPitch(a1)	; load pitch offset and channel volume
+		move.b	mFlags.w,d3		; load flags value to d3
+		and.b	#1<<mfbWater,d3		; get only underwater flags (copy it)
+		or.b	d6,d3			; or any other necessary flags from d6
+		move.b	d3,cExtraFlags(a1)	; save extra flags value
+
 		tst.b	d4			; check if this channel is a PSG channel
 		bmi.s	.loop			; if is, skip over this
 
@@ -822,7 +845,10 @@ dPlaySnd_StopSFX:
 .notrack
 		add.w	#cSizeSFX,a1		; go to next channel
 		dbf	d0,.loop		; repeat for each channel
-	dResetADSR	a4, d6, 2		; reset ADSR data for PSG SFX
+
+	if FEATURE_PSGADSR
+		dResetADSR	a4, d6, 2	; reset ADSR data for PSG SFX
+	endif
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -852,7 +878,10 @@ dStopMusic:
 		lea	mVctMus.w,a4		; load driver RAM start to a1
 		move.b	mMasterVolDAC.w,d5	; load DAC master volume to d4
 	dCLEAR_MEM	mChannelEnd-mVctMus, 32	; clear this block of memory with 32 byts per loop
-	dResetADSR	a4, d6, 3		; reset ADSR data for PSG
+
+	if FEATURE_PSGADSR
+		dResetADSR	a4, d6, 3	; reset ADSR data for PSG
+	endif
 
 	if safe=1
 		clr.b	msChktracker.w		; if in safe mode, also clear the check tracker variable!
@@ -896,7 +925,7 @@ dResetVolume:
 		jsr	dSetFilter(pc)		; load filter instructions
 
 dUpdateVolumeAll:
-		bsr.s	dReqVolUpFM		; request FM volume update
+		bsr.w	dReqVolUpFM		; request FM volume update
 		or.b	d6,mSFXDAC1.w		; request update for SFX DAC1 channel
 
 .ch :=	mDAC1					; start at DAC1
@@ -953,7 +982,8 @@ dPlaySnd_ShoesOff:
 dPlaySnd_ToWater:
 	if FEATURE_UNDERWATER
 		bset	#mfbWater,mFlags.w	; enable underwater mode
-		bra.s	dReqVolUpFM		; request FM volume update
+		bsr.s	dReqVolUpFM		; request FM volume update
+		bra.s	dPlaySnd_UpdateUW	; update underwater status
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -963,6 +993,19 @@ dPlaySnd_ToWater:
 dPlaySnd_OutWater:
 	if FEATURE_UNDERWATER
 		bclr	#mfbWater,mFlags.w	; disable underwater mode
+		bsr.s	dReqVolUpFM		; request FM volume update
+
+dPlaySnd_UpdateUW:
+		btst	#mfbWater,mFlags.w	; check if underwater mode is active
+		bne.s	dPlaySnd_UpdateEnableUW	; if enabled, run the code to enable to
+		moveq	#~(1<<mfbWater),d6	; prepare update value to d6
+		and.b	d6,mMusicFlags.w	; disable underwater mode for music
+
+.ch :=		mSFXFM3+cExtraFlags		; start at SFX FM3
+		rept SFX_FM			; loop through all SFX FM channels
+			and.b	d6,.ch.w	; disable underwater mode for sfx
+.ch :=			.ch+cSizeSFX		; go to next channel
+		endm
 	else
 		rts
 	endif
@@ -992,6 +1035,35 @@ dReqVolUpMusicFM:
 
 locret_ReqVolUp:
 		rts
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Enable underwater mode thing
+; ---------------------------------------------------------------------------
+
+	if FEATURE_UNDERWATER
+dPlaySnd_UpdateEnableUW:
+		moveq	#~(1<<mfbWater),d6	; prepare disable value to d6
+		moveq	#1<<mfbWater,d5		; prepare enable value to d5
+		and.b	d6,mMusicFlags.w	; disable underwater mode for music
+
+		btst	#mfbBlockUW,mMusicFlags.w; check if underwater mode is blocked
+		bne.s	.nomus			; branch if disabled
+		or.b	d5,mMusicFlags.w	; enable underwater mode for music
+
+.nomus
+.ch :=	mSFXFM3+cExtraFlags			; start at SFX FM3
+	rept SFX_FM				; loop through all SFX FM channels
+		and.b	d6,mMusicFlags.w	; disable underwater mode for sfx
+
+		btst	#mfbBlockUW,.ch.w	; check if underwater mode is blocked
+		bne.s	.nono			; if so, skip
+		or.b	d5,.ch.w		; enable underwater mode for sfx
+
+.nono
+.ch :=		.ch+cSizeSFX			; go to next channel
+	endm
+		rts
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Enable speed shoes mode

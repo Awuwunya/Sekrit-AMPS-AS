@@ -22,38 +22,38 @@ dCommands:
 ; ---------------------------------------------------------------------------
 
 .comm
-	bra.w	dcPan		; E0 - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
-	bra.w	dcsDetune	; E1 - Set channel frequency displacement to xx (DETUNE_SET)
-	bra.w	dcaDetune	; E2 - Add xx to channel frequency displacement (DETUNE)
-	bra.w	dcsTransp	; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
-	bra.w	dcaTransp	; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	bra.w	*		; E5 -
-	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
-	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
-	bra.w	dcVoice		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
-	bra.w	dcsTempoShoes	; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
-	bra.w	dcsTempo	; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
-	bra.w	dcSampDAC	; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
-	bra.w	dcPitchDAC	; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
-	bra.w	dcaVolume	; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
-	bra.w	dcsVolume	; EE - Set channel volume to xx (VOLUME - VOL_CN_ABS)
-	bra.w	dcsLFO		; EF - Set LFO (SET_LFO - LFO_AMSEN)
-	bra.w	dcMod68K	; F0 - Modulation (MOD_SETUP)
-	bra.w	dcPortamento	; F1 - Portamento enable/disable flag (PORTAMENTO)
-	bra.w	dcVolEnv	; F2 - Set volume envelope to xx (INSTRUMENT - INS_C_PSG) (FM_VOLENV / DAC_VOLENV)
-	bra.w	dcModEnv	; F3 - Set modulation envelope to xx (MOD_ENV - MENV_GEN)
-	bra.w	dcComplexTL	; F4 - Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
-	bra.w	dcStop		; F5 - End of channel (TRK_END - TEND_STD)
-	bra.w	dcJump		; F6 - Jump to xxxx (GOTO)
-	bra.w	dcLoop		; F7 - Loop back to zzzz yy times, xx being the loop index (LOOP)
-	bra.w	dcCall		; F8 - Call pattern at xxxx, saving return point (GOSUB)
-	bra.w	dcReturn	; F9 - Return (RETURN)
-	bra.w	dcsComm		; FA - Set communications byte yy to xx (SET_COMM - SPECIAL)
-	bra.w	dcCond		; FB - Get comms byte y, and compare zz using condition x (COMM_CONDITION)
-	bra.w	dcResetCond	; FC - Reset condition (COMM_RESET)
-	bra.w	dcGate		; FD - Stop note after xx frames (NOTE_STOP - NSTOP_NORMAL)
-	bra.w	dcYM		; FE - YM command (YMCMD)
-				; FF - META
+		bra.w	dcPan			; E0 - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
+		bra.w	dcsDetune		; E1 - Set channel frequency displacement to xx (DETUNE_SET)
+		bra.w	dcaDetune		; E2 - Add xx to channel frequency displacement (DETUNE)
+		bra.w	dcsTransp		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
+		bra.w	dcaTransp		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
+		bra.w	*			; E5 -
+		bra.w	dcFqFz			; E6 - Freeze frequency for the next note (FREQ_FREEZE)
+		bra.w	dcHold			; E7 - Do not allow note on/off for next note (HOLD)
+		bra.w	dcVoice			; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
+		bra.w	dcsTempoShoes		; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+		bra.w	dcsTempo		; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
+		bra.w	dcSampDAC		; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
+		bra.w	dcPitchDAC		; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
+		bra.w	dcaVolume		; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
+		bra.w	dcsVolume		; EE - Set channel volume to xx (VOLUME - VOL_CN_ABS)
+		bra.w	dcsLFO			; EF - Set LFO (SET_LFO - LFO_AMSEN)
+		bra.w	dcMod68K		; F0 - Modulation (MOD_SETUP)
+		bra.w	dcPortamento		; F1 - Portamento enable/disable flag (PORTAMENTO)
+		bra.w	dcVolEnv		; F2 - Set volume envelope to xx (INSTRUMENT - INS_C_PSG) (FM_VOLENV / DAC_VOLENV)
+		bra.w	dcModEnv		; F3 - Set modulation envelope to xx (MOD_ENV - MENV_GEN)
+		bra.w	dcComplexTL		; F4 - Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
+		bra.w	dcStop			; F5 - End of channel (TRK_END - TEND_STD)
+		bra.w	dcJump			; F6 - Jump to xxxx (GOTO)
+		bra.w	dcLoop			; F7 - Loop back to zzzz yy times, xx being the loop index (LOOP)
+		bra.w	dcCall			; F8 - Call pattern at xxxx, saving return point (GOSUB)
+		bra.w	dcReturn		; F9 - Return (RETURN)
+		bra.w	dcsComm			; FA - Set communications byte yy to xx (SET_COMM - SPECIAL)
+		bra.w	dcCond			; FB - Get comms byte y, and compare zz using condition x (COMM_CONDITION)
+		bra.w	dcResetCond		; FC - Reset condition (COMM_RESET)
+		bra.w	dcGate			; FD - Stop note after xx frames (NOTE_STOP - NSTOP_NORMAL)
+		bra.w	dcYM			; FE - YM command (YMCMD)
+						; FF - META
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Routine to execute tracker meta and false condition commands
@@ -72,46 +72,46 @@ dCommands:
 ; ---------------------------------------------------------------------------
 
 .meta
-	bra.w	dcModOn		; FF 00 - Turn on Modulation (MOD_SET - MODS_ON)
-	bra.w	dcModOff	; FF 04 - Turn off Modulation (MOD_SET - MODS_OFF)
-	bra.w	dcsFreq		; FF 08 - Set channel frequency to xxxx (CHFREQ_SET)
-	bra.w	dcsFreqNote	; FF 0C - Set channel frequency to note xx (CHFREQ_SET - CHFREQ_NOTE)
-	bra.w	dcSpRev		; FF 10 - Increment spindash rev counter (SPINDASH_REV - SDREV_INC)
-	bra.w	dcSpReset	; FF 14 - Reset spindash rev counter (SPINDASH_REV - SDREV_RESET)
-	bra.w	dcaTempoShoes	; FF 18 - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)
-	bra.w	dcaTempo	; FF 1C - Add xx to music tempo (TEMPO - TEMPO_ADD)
-	bra.w	dcCondReg	; FF 20 - Get RAM table offset by y, and chk zz with cond x (COMM_CONDITION - COMM_SPEC)
-	bra.w	dcSound		; FF 24 - Play another music/sfx (SND_CMD)
-	bra.w	dcsModeADSR	; FF 28 - Set ADSR mode and restart ADSR instrument (ADSR - ADSR_MODE)
-	bra.w	dcCont		; FF 2C - Do a continuous SFX loop (CONT_SFX)
-	bra.w	dcSpecFM3	; FF 30 - Enable FM3 special mode (SPC_FM3)
-	bra.w	dcFilter	; FF 34 - Set DAC filter bank. (DAC_FILTER)
-	bra.w	dcBackup	; FF 38 - Load the last song from back-up (FADE_IN_SONG)
-	bra.w	dcNoisePSG	; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
-	bra.w	dcCSMOn		; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
-	bra.w	dcCSMOff	; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
-	bra.w	*		; FF 48 -
-	bra.w	*		; FF 4C -
+		bra.w	dcModOn			; FF 00 - Turn on Modulation (MOD_SET - MODS_ON)
+		bra.w	dcModOff		; FF 04 - Turn off Modulation (MOD_SET - MODS_OFF)
+		bra.w	dcsFreq			; FF 08 - Set channel frequency to xxxx (CHFREQ_SET)
+		bra.w	dcsFreqNote		; FF 0C - Set channel frequency to note xx (CHFREQ_SET - CHFREQ_NOTE)
+		bra.w	dcSpRev			; FF 10 - Increment spindash rev counter (SPINDASH_REV - SDREV_INC)
+		bra.w	dcSpReset		; FF 14 - Reset spindash rev counter (SPINDASH_REV - SDREV_RESET)
+		bra.w	dcaTempoShoes		; FF 18 - Add xx to music speed tempo (TEMPO - TEMPO_ADD_SPEED)
+		bra.w	dcaTempo		; FF 1C - Add xx to music tempo (TEMPO - TEMPO_ADD)
+		bra.w	dcCondReg		; FF 20 - Get RAM table offset by y, and chk zz with cond x (COMM_CONDITION - COMM_SPEC)
+		bra.w	dcSound			; FF 24 - Play another music/sfx (SND_CMD)
+		bra.w	dcsModFreq		; FF 28 - Set modulation frequency to xxxx (MOD_SET - MODS_FREQ)
+		bra.w	dcsModReset		; FF 2C - Reset modulation data (MOD_SET - MODS_RESET)
+		bra.w	dcSpecFM3		; FF 30 - Enable FM3 special mode (SPC_FM3)
+		bra.w	dcFilter		; FF 34 - Set DAC filter bank. (DAC_FILTER)
+		bra.w	dcBackup		; FF 38 - Load the last song from back-up (FADE_IN_SONG)
+		bra.w	dcNoisePSG		; FF 3C - PSG4 mode to xx (PSG_NOISE - PNOIS_AMPS)
+		bra.w	dcCSMOn			; FF 40 - Enable CSM mode with settings (SPC_FM3 - CSM_ON)
+		bra.w	dcCSMOff		; FF 44 - Disable CSM mode (SPC_FM3 - CSM_OFF)
+		bra.w	dcsModeADSR		; FF 48 - Set ADSR mode and restart ADSR instrument (ADSR - ADSR_MODE)
+		bra.w	dcCont			; FF 4C - Do a continuous SFX loop (CONT_SFX)
 
 	if FEATURE_MODTL
 tlmod	macro name
-	bra.w	name_1		; jump for operator 1
-	bra.w	name_2		; jump for operator 2
-	bra.w	name_3		; jump for operator 3
-	bra.w	name_4		; jump for operator 4
+	bra.w	name_1				; jump for operator 1
+	bra.w	name_2				; jump for operator 2
+	bra.w	name_3				; jump for operator 3
+	bra.w	name_4				; jump for operator 4
     endm
 
-	tlmod	dcModOffTL	; FF 5x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
-	tlmod	dcModOnTL	; FF 6x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
-	tlmod	dcModTL		; FF 7x - Modulation for operator x (TL_MOD - MOD_SETUP)
-	tlmod	dcVolEnvTL	; FF 8y - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
-	tlmod	dcaVolTL	; FF 9y - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
-	tlmod	dcsVolTL	; FF Ay - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
+		tlmod	dcModOffTL		; FF 5x - Turn off TL Modulation for operator x (TL_MOD - MODS_OFF)
+		tlmod	dcModOnTL		; FF 6x - Turn on TL Modulation for operator x (TL_MOD - MODS_ON)
+		tlmod	dcModTL			; FF 7x - Modulation for operator x (TL_MOD - MOD_SETUP)
+		tlmod	dcVolEnvTL		; FF 8y - Set TL volume envelope to xx for operator y (TL_MOD - FM_VOLENV)
+		tlmod	dcaVolTL		; FF 9y - Add xx to volume for operator y (TL_MOD - VOL_ADD_TL)
+		tlmod	dcsVolTL		; FF Ay - Set volume to xx for operator y (TL_MOD - VOL_SET_TL)
 	endif
 
 	if safe=1
-		bra.w	dcFreeze	; FF B0 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
-		bra.w	dcTracker	; FF B4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
+		bra.w	dcFreeze		; FF B0 - Freeze CPU. Debug flag (DEBUG_STOP_CPU)
+		bra.w	dcTracker		; FF B4 - Bring up tracker debugger at end of frame. Debug flag (DEBUG_PRINT_TRACKER)
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -128,38 +128,38 @@ dcskip	macro amount
    endm
 
 .false
-	dcskip	1		; E0 - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
-	dcskip	1		; E1 - Add xx to channel frequency displacement (DETUNE)
-	dcskip	1		; E2 - Add xx to channel frequency displacement (DETUNE)
-	dcskip	1		; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
-	dcskip	1		; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
-	dcskip	1		; E5 -
-	bra.w	dcFqFz		; E6 - Freeze frequency for the next note (FREQ_FREEZE)
-	bra.w	dcHold		; E7 - Do not allow note on/off for next note (HOLD)
-	dcskip	1		; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
-	dcskip	1		; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
-	dcskip	1		; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
-	dcskip	0		; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
-	dcskip	0		; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
-	dcskip	1		; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
-	dcskip	1		; EE - Set channel volume to xx (VOLUME - VOL_CN_ABS)
-	dcskip	1		; EF - Set LFO (SET_LFO - LFO_AMSEN)
-	dcskip	4		; F0 - Modulation (MOD_SETUP)
-	dcskip	1		; F1 - Portamento enable/disable flag (PORTAMENTO)
-	dcskip	1		; F2 - Set volume envelope to xx (INSTRUMENT - INS_C_PSG) (FM_VOLENV / DAC_VOLENV)
-	dcskip	1		; F3 - Set modulation envelope to xx (MOD_ENV - MENV_GEN)
-	bra.w	dcComplexTL	; F4 - Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
-	dcskip	0		; F5 - End of channel (TRK_END - TEND_STD)
-	dcskip	2		; F6 - Jump to xxxx (GOTO)
-	dcskip	4		; F7 - Loop back to zzzz yy times, xx being the loop index (LOOP)
-	dcskip	2		; F8 - Call pattern at xxxx, saving return point (GOSUB)
-	dcskip	0		; F9 - Return (RETURN)
-	bra.w	dcsComm		; FA - Set communications byte yy to xx (SET_COMM - SPECIAL)
-	bra.w	dcCond		; FB - Get comms byte y, and compare zz using condition x (COMM_CONDITION)
-	bra.w	dcResetCond	; FC - Reset condition (COND_RESET)
-	dcskip	1		; FD - Stop note after xx frames (NOTE_STOP - NSTOP_NORMAL
-	dcskip	1		; FE - YM command (YMCMD)
-	bra.w	.metacall	; FF - META
+		dcskip	1			; E0 - Panning, AMS, FMS (PANAFMS - PAFMS_PAN)
+		dcskip	1			; E1 - Add xx to channel frequency displacement (DETUNE)
+		dcskip	1			; E2 - Add xx to channel frequency displacement (DETUNE)
+		dcskip	1			; E3 - Set channel pitch to xx (TRANSPOSE - TRNSP_SET)
+		dcskip	1			; E4 - Add xx to channel pitch (TRANSPOSE - TRNSP_ADD)
+		dcskip	1			; E5 -
+		bra.w	dcFqFz			; E6 - Freeze frequency for the next note (FREQ_FREEZE)
+		bra.w	dcHold			; E7 - Do not allow note on/off for next note (HOLD)
+		dcskip	1			; E8 - Set Voice/sample/ADSR to xx (INSTRUMENT - INS_C_FM / INS_C_DAC / INS_C_ADSR)
+		dcskip	1			; E9 - Set music speed shoes tempo to xx (TEMPO - TEMPO_SET_SPEED)
+		dcskip	1			; EA - Set music tempo to xx (TEMPO - TEMPO_SET)
+		dcskip	0			; EB - Use sample DAC mode (DAC_MODE - DACM_SAMP)
+		dcskip	0			; EC - Use pitch DAC mode (DAC_MODE - DACM_NOTE)
+		dcskip	1			; ED - Add xx to channel volume (VOLUME - VOL_CN_FM / VOL_CN_PSG / VOL_CN_DAC)
+		dcskip	1			; EE - Set channel volume to xx (VOLUME - VOL_CN_ABS)
+		dcskip	1			; EF - Set LFO (SET_LFO - LFO_AMSEN)
+		dcskip	4			; F0 - Modulation (MOD_SETUP)
+		dcskip	1			; F1 - Portamento enable/disable flag (PORTAMENTO)
+		dcskip	1			; F2 - Set volume envelope to xx (INSTRUMENT - INS_C_PSG) (FM_VOLENV / DAC_VOLENV)
+		dcskip	1			; F3 - Set modulation envelope to xx (MOD_ENV - MENV_GEN)
+		bra.w	dcComplexTL		; F4 - Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
+		dcskip	0			; F5 - End of channel (TRK_END - TEND_STD)
+		dcskip	2			; F6 - Jump to xxxx (GOTO)
+		dcskip	4			; F7 - Loop back to zzzz yy times, xx being the loop index (LOOP)
+		dcskip	2			; F8 - Call pattern at xxxx, saving return point (GOSUB)
+		dcskip	0			; F9 - Return (RETURN)
+		bra.w	dcsComm			; FA - Set communications byte yy to xx (SET_COMM - SPECIAL)
+		bra.w	dcCond			; FB - Get comms byte y, and compare zz using condition x (COMM_CONDITION)
+		bra.w	dcResetCond		; FC - Reset condition (COND_RESET)
+		dcskip	1			; FD - Stop note after xx frames (NOTE_STOP - NSTOP_NORMAL
+		dcskip	1			; FE - YM command (YMCMD)
+		bra.w	.metacall		; FF - META
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tracker commands for handling spindash revving.
@@ -298,7 +298,7 @@ dcPitchDAC:
 ; ---------------------------------------------------------------------------
 
 dcHold:
-		bchg	#cfbHold,(a1)		; flip the channel hold flag
+		bchg	#mfbHold,mExtraFlags.w	; flip the channel hold flag
 		rts
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -571,9 +571,6 @@ dcPortamento:
 
 .rts
 		rts
-
-	elseif safe=1
-		AMPS_Debug_dcPortamento		; display an error if disabled
 	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
@@ -583,15 +580,8 @@ dcPortamento:
 dcMod68K:
 	if FEATURE_MODULATION
 		move.l	a2,cMod(a1)		; set modulation data address
-		clr.w	cModFreq(a1)		; reset modulation frequency offset to 0
-		move.b	(a2)+,cModSpeed(a1)	; load modulation speed from tracker to channel
-
-		move.b	(a2)+,d3		; load modulation step count from tracker to d3
-		lsr.b	#1,d3			; halve it
-		move.b	d3,cModCount(a1)	; save as modulation step count to channel
-
-		move.b	(a2)+,cModDelay(a1)	; load modulation delay from tracker to channel
-		move.b	(a2)+,cModStep(a1)	; load modulation step offset from tracker to channel
+		addq.w	#4,a2			; skip all the modulation data
+		st	cModSpeed(a1)		; enable modulation
 		rts
 	endif
 ; ===========================================================================
@@ -612,6 +602,41 @@ dcModOn:
 dcModOff:
 	if FEATURE_MODULATION
 		clr.b	cModSpeed(a1)		; disable modulation
+		rts
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for setting modulation frequency
+; ---------------------------------------------------------------------------
+
+dcsModFreq:
+	if FEATURE_MODULATION
+		move.b	(a2)+,cModFreq(a1)	; load modulating frequency from tracker to channel
+		move.b	(a2)+,cModFreq+1(a1)	; ''
+		rts
+	endif
+; ===========================================================================
+; ---------------------------------------------------------------------------
+; Tracker command for resetting modulation
+; ---------------------------------------------------------------------------
+
+dcsModReset:
+	if FEATURE_MODULATION
+		clr.w	cModFreq(a1)		; clear frequency offset
+		tst.b	cModSpeed(a1)		; check if enabled
+		beq.s	.rts			; if not, do not load settings
+
+		move.l	cMod(a1),a4		; get modulation data address
+		move.b	(a4)+,cModSpeed(a1)	; copy speed
+
+		move.b	(a4)+,d4		; get number of steps
+		lsr.b	#1,d4			; halve it
+		move.b	d4,cModCount(a1)	; save as the current number of steps
+
+		move.b	(a4)+,cModDelay(a1)	; copy delay
+		move.b	(a4)+,cModStep(a1)	; copy step offset
+
+.rts
 		rts
 
 	elseif safe=1
@@ -762,6 +787,7 @@ dcBackup:
 		jsr	dLoadFade(pc)		; initiate fade in
 
 		move.l	mBackTempoMain.w,mTempoMain.w; restore tempo settings
+		move.l	mBackTempo.w,mTempo.w	; restore tempo settings
 		move.l	mBackVctMus.w,mVctMus.w	; restore voice table address
 
 		lea	mBackUpLoc.w,a4		; load source address to a4
@@ -987,7 +1013,7 @@ dUpdateVoiceFM:
 	if FEATURE_UNDERWATER
 		clr.w	d6			; no underwater 4 u
 
-		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		btst	#mfbWater,mExtraFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
 		lea	dUnderwaterTbl(pc),a6	; get underwater table to a6
 
@@ -1148,7 +1174,7 @@ dUpdateVoiceFM3:
 	if FEATURE_UNDERWATER
 		clr.w	d6			; no underwater 4 u
 
-		btst	#mfbWater,mFlags.w	; check if underwater mode is enabled
+		btst	#mfbWater,mExtraFlags.w	; check if underwater mode is enabled
 		beq.s	.uwdone			; if not, skip
 		lea	dUnderwaterTbl(pc),a6	; get underwater table to a6
 
@@ -1232,7 +1258,7 @@ dUpdateVoiceFM3:
 ; ---------------------------------------------------------------------------
 
 dcStop:
-		and.b	#$FF-(1<<cfbHold)-(1<<cfbRun),(a1); clear hold and running tracker flags
+		and.b	#$FF-(1<<cfbRun),(a1)	; clear hold and running tracker flags
 	dStopChannel	-1			; stop channel operation
 
 	if FEATURE_FM3SM
@@ -1749,3 +1775,4 @@ dcTracker:
 		st	msChktracker.w	; set debug flag
 		rts
 	endif
+; ---------------------------------------------------------------------------

@@ -430,11 +430,6 @@ sModData	macro wait, speed, step, count
 	endif
     endm
 
-; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)
-ssPortamento	macro frames
-	dc.b $F1, frames
-    endm
-
 ; FF00 - Turn on Modulation (MOD_SET - MODS_ON)
 sModOn		macro
 	dc.b $FF,$00
@@ -443,6 +438,22 @@ sModOn		macro
 ; FF04 - Turn off Modulation (MOD_SET - MODS_OFF)
 sModOff		macro
 	dc.b $FF,$04
+    endm
+
+; FF28xxxx - Set modulation frequency to xxxx (MOD_SET - MODS_FREQ)
+ssModFreq	macro freq
+	dc.b $FF,$28
+	dc.w freq
+    endm
+
+; F1xx - Set portamento speed to xx frames. 0 means portamento is disabled (PORTAMENTO)
+ssPortamento	macro frames
+	dc.b $F1, frames
+    endm
+
+; FF2C - Reset modulation data (MOD_SET - MODS_RESET)
+sModReset	macro
+	dc.b $FF,$2C
     endm
 
 ; F5 - End of channel (TRK_END - TEND_STD)
@@ -534,17 +545,6 @@ sPlayMus	macro id
 	dc.b $FF,$24, id
     endm
 
-; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
-ssModeADSR	macro mode
-	dc.b $FF,$28, mode
-    endm
-
-; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
-sCont		macro loc
-	dc.b $FF,$2C
-	dc.w loc-*-2
-    endm
-
 ; FF30xxxxyyyyzzzz - Enable FM3 special mode (SPC_FM3)
 sSpecFM3	macro op2, op3, op4
 	dc.b $FF,$30
@@ -581,6 +581,17 @@ sCSMOn		macro ops, timera
 ; FF44yy - Disable CSM mode and set register mask y (SPC_FM3 - CSM_OFF)
 sCSMOff		macro ops
 	dc.b $FF,$44, (ops&$F0)|ctFM3
+    endm
+
+; FF28xx - Set ADSR mode to xx (ADSR - ADSR_MODE)
+ssModeADSR	macro mode
+	dc.b $FF,$48, mode
+    endm
+
+; FF2Cxxxx - Keep looping back to xxxx each time the SFX is being played (CONT_SFX)
+sCont		macro loc
+	dc.b $FF,$4C
+	dc.w loc-*-2
     endm
 
 ; F4xx -  Setup TL modulation for all operators according to parameter value (TL_MOD - MOD_COMPLEX)
