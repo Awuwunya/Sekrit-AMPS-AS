@@ -604,13 +604,14 @@ dPlaySnd_SFX:
 
 .setcont
 		move.b	d1,mContLast.w		; save new continous SFX ID
-		moveq	#0,d1			; reset channel count
 		lea	dSFXoverList(pc),a5	; load quick reference to the SFX override list to a5
 		lea	dSFXoffList(pc),a4	; load quick reference to the SFX channel list to a4
 
-		move.b	d6,-(sp)		; store flags in stack
+		moveq	#0,d1			; reset channel count
+		move.b	d6,d1			; store flags in d1.w
+
 		moveq	#0,d0
-		move.b	(a2)+,d5		; load sound effect priority to d5
+		move.b	(a2)+,d2		; load sound effect priority to d2
 		move.b	(a2)+,d0		; load number of SFX channels to d0
 ; ---------------------------------------------------------------------------
 ; The reason why we delay PSG by 1 extra frame, is because of Dual PCM.
@@ -658,6 +659,7 @@ dPlaySnd_SFX:
 		dbf	d0,.loopSFX		; repeat for each requested channel
 		addq.l	#2,sp			; remove parameters from stack
 
+		swap	d1			; get chan count to d1.w
 		tst.w	d1			; check if any channel was loaded
 		bne.s	.rts			; if was, branch
 		clr.b	mContLast.w		; reset continous sfx counter (prevent ghost-loading)
@@ -707,8 +709,8 @@ dPlaySnd_SFX:
 ; ---------------------------------------------------------------------------
 
 		move.l	(a2)+,(a1)		; load channel flags, type, pitch offset and channel volume
-		move.b	d5,cPrio(a1)		; set channel priority
-		move.b	d2,cDuration(a1)	; reset channel duration
+		move.b	d2,cPrio(a1)		; set channel priority
+		move.b	d4,cDuration(a1)	; reset channel duration
 
 		move.l	a2,a3			; load music header position to a3
 		add.w	(a2)+,a3		; add tracker offset to a3
@@ -719,8 +721,12 @@ dPlaySnd_SFX:
 
 		move.b	mFlags.w,d3		; load flags value to d3
 		and.b	#1<<mfbWater,d3		; get only underwater flags (copy it)
-		or.b	(sp),d3			; or any other necessary flags from d6
+		or.b	d1,d3			; OR any other necessary flags from d1.w
 		move.b	d3,cExtraFlags(a1)	; save extra flags value
+
+		swap	d1			; get chan count to d1.w
+		addq.w	#1,d1			; set channel as loaded
+		swap	d1			; get flags to d1.w
 
 		tst.b	d5			; check if this channel is a PSG channel
 		bmi.s	.loop			; if is, skip over this
@@ -739,8 +745,8 @@ dPlaySnd_SFX:
 		move.w	#$100,cFreq(a1)		; DAC default frequency is $100, NOT $000
 
 .loop
-		addq.w	#1,d1			; set channel as loaded
 		dbf	d0,.loopSFX		; repeat for each requested channel
+		addq.l	#2,sp			; remove parameters from stack
 		rts
 ; ---------------------------------------------------------------------------
 ; The instant release for FM channels behavior was not in the Sonic 1
