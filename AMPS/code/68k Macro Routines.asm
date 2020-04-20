@@ -634,7 +634,13 @@ dStopChannel	macro	stop
 		bra.s	.cont
 	else
 		if FEATURE_PSGADSR
-			jmp	dKeyOffPSG(pc)	; key off PSG channel
+			if stop=1
+				move.w	#$7F00|adpRelease,(a3)	; forcibly mute ADSR
+				move.w	#$4000,d1		; set volume to mute
+				rts
+			else
+				jmp	dKeyOffPSG(pc)		; key off PSG channel
+			endif
 		else
 			jmp	dMutePSGmus(pc)	; mute PSG channel
 		endif

@@ -1281,6 +1281,7 @@ dUpdateVoiceFM3:
 ; ---------------------------------------------------------------------------
 
 dcStop:
+		and.b	#$FF-(1<<mfbHold),mExtraFlags.w; clear note hold flag
 		and.b	#$FF-(1<<cfbRun),(a1)	; clear running tracker flag
 	dStopChannel	-1			; stop channel operation
 
@@ -1340,22 +1341,35 @@ dcStop:
 ; ---------------------------------------------------------------------------
 
 .psg
-		lsr.b	#4,d3			; make it easier to reference the right offset in the table
-		movea.w	(a4,d3.w),a4		; get the SFX channel we were overriding
-		tst.b	(a4)			; check if that channel is running a tracker
-		bpl.s	.exit			; if not, branch
-
-		bclr	#cfbInt,(a4)		; channel is not interrupted anymore
-		bset	#cfbRest,(a4)		; reset sfx override flag
-
 	if FEATURE_PSGADSR
 		cmp.w	#mSFXPSG3,a1		; check if this was SFX PSG3 channel
 		bne.s	.nopsg3			; if not, branch
-		bclr	#cfbInt,mPSG4+cFlags.w	; channel is not interrupted anymore
-		bset	#cfbRest,mPSG4+cFlags.w	; set channel resting
+		tst.b	mPSG4+cFlags.w		; check if PSG4 is active
+		bpl.s	.cxpsg3			; if not, check PSG3
+
+		lea	mPSG4.w,a4		; use PSG4 as primary channel
+		bclr	#cfbInt,mPSG3+cFlags.w	; channel is not interrupted anymore
+		bset	#cfbRest,mPSG3+cFlags.w	; set channel resting
+		bra.s	.unintpsg		; uninterrupt channel
+
+.cxpsg3
+		lea	mPSG3.w,a4		; use PSG3 as primary channel
+		bra.s	.checkunint		; uninterrupt channel
 
 .nopsg3
 	endif
+; ---------------------------------------------------------------------------
+
+		lsr.b	#4,d3			; make it easier to reference the right offset in the table
+		movea.w	(a4,d3.w),a4		; get the SFX channel we were overriding
+
+.checkunint
+		tst.b	(a4)			; check if that channel is running a tracker
+		bpl.s	.exit			; if not, branch
+
+.unintpsg
+		bclr	#cfbInt,(a4)		; channel is not interrupted anymore
+		bset	#cfbRest,(a4)		; set channel resting
 
 		cmp.b	#ctPSG4,cType(a4)	; check if this channel is in PSG4 mode
 		bne.s	.exit			; if not, skip
