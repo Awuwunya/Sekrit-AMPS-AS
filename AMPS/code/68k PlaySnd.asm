@@ -677,7 +677,7 @@ dPlaySnd_SFX:
 	if FEATURE_PSGADSR
 		lea	dSFXADSRtbl-8(pc),a3	; get PSG ADSR table address to a3
 		move.w	(a3,d3.w),a3		; load the PSG ADSR entry this channel uses
-		move.w	#$7F00|admNormal|adpRelease,(a3); set to default value
+		move.w	#$7F00|admImm|adpRelease,(a3); set to default value
 	endif
 
 		move.w	(a5,d3.w),a3		; get the music channel we should override

@@ -41,16 +41,16 @@ dGatePSG	macro	addr
 		bne.s	.endt			; if still not 0, branch
 		or.b	#(1<<cfbRest)|(1<<cfbVol),(a1); set channel to resting and request a volume update (update on next note-on)
 
-		if FEATURE_PSGADSR
-			jsr	dKeyOffPSG(pc)	; key off PSG channel
-		else
-			jsr	dMutePSGmus(pc)	; mute PSG channel
-		endif
-
-	if "addr"==""
-		bra.w	.next			; jump to next track
+	if FEATURE_PSGADSR
+		jsr	dKeyOffPSG2(pc)		; key off PSG channel
 	else
-		jmp	addr(pc)		; jump directly to address
+		jsr	dMutePSGmus(pc)		; mute PSG channel
+
+		if "addr"==""
+			bra.w	.next		; jump to next track
+		else
+			jmp	addr(pc)	; jump directly to address
+		endif
 	endif
 .endt
     endm
@@ -612,7 +612,6 @@ dGetFreqPSG	macro
 dStopChannel	macro	stop
 		tst.b	cType(a1)		; check if this was a PSG channel
 		bmi.s	.mutePSG		; if yes, mute it
-
 		btst	#ctbDAC,cType(a1)	; check if this was a DAC channel
 		bne.s	.muteDAC		; if we are, mute that
 
@@ -634,13 +633,7 @@ dStopChannel	macro	stop
 		bra.s	.cont
 	else
 		if FEATURE_PSGADSR
-			if stop=1
-				move.w	#$7F00|adpRelease,(a3)	; forcibly mute ADSR
-				move.w	#$4000,d1		; set volume to mute
-				rts
-			else
-				jmp	dKeyOffPSG(pc)		; key off PSG channel
-			endif
+			jmp	dKeyOffPSG(pc)	; key off PSG channel
 		else
 			jmp	dMutePSGmus(pc)	; mute PSG channel
 		endif
@@ -662,7 +655,7 @@ dStopChannel	macro	stop
 ; ---------------------------------------------------------------------------
 
 dResetADSR	macro areg, dreg, mode
-	move.w	#$7F00|admNormal|adpRelease,dreg; load default value to dreg
+	move.w	#$7F00|admImm|adpRelease,dreg	; load default value to dreg
 
 	if mode&1
 		lea	mADSR.w,areg		; load ADSR address to areg

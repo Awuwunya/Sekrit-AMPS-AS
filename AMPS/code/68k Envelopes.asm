@@ -361,16 +361,6 @@ dEnvCommandTL:
 dProcessADSR:
 		moveq	#0,d4
 		move.b	cADSR(a1),d4		; load ADSR to d4
-		bne.s	.normal			; if 0, emulate default behaviour
-		btst	#cfbRest,(a1)		; check if resting
-		beq.s	.rts			; if not, do not add to volume
-		move.w	#$4000,d1		; set to max volume
-
-.rts
-		rts
-; ---------------------------------------------------------------------------
-
-.normal
 		lsl.w	#3,d4			; multiply offset by 8
 		clr.b	d5			; clear low byte of d5
 
@@ -470,7 +460,7 @@ dPhaseTableADSR:
 	; attackrelease mode:
 		dc.b admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpRelease, admAttRel|adpAttack
 
-	; unused
+	; immediate mode:
 		dc.b adpSustain|admImm, adpSustain|admImm, adpRelease|admImm, adpSustain|admImm
 ; ---------------------------------------------------------------------------
 	endif

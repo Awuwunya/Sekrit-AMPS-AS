@@ -1347,14 +1347,18 @@ dcStop:
 		tst.b	mPSG4+cFlags.w		; check if PSG4 is active
 		bpl.s	.cxpsg3			; if not, check PSG3
 
-		lea	mPSG4.w,a4		; use PSG4 as primary channel
 		bclr	#cfbInt,mPSG3+cFlags.w	; channel is not interrupted anymore
 		bset	#cfbRest,mPSG3+cFlags.w	; set channel resting
+		move.b	#$7F,mADSR+aPSG3.w	; set to max volume
+		or.b	#adpRelease,mADSR+aPSG3+admAttRel.w; force release
+		move.b	#$7F,mADSR+aPSG4.w	; set to max volume
+		or.b	#adpRelease,mADSR+aPSG4+admAttRel.w; force release
+
+		lea	mPSG4.w,a4		; use PSG4 as primary channel
 		bra.s	.unintpsg		; uninterrupt channel
 
 .cxpsg3
-		lea	mPSG3.w,a4		; use PSG3 as primary channel
-		bra.s	.checkunint		; uninterrupt channel
+		moveq	#ctPSG3,d3		; use PSG3 as primary channel
 
 .nopsg3
 	endif
@@ -1362,10 +1366,18 @@ dcStop:
 
 		lsr.b	#4,d3			; make it easier to reference the right offset in the table
 		movea.w	(a4,d3.w),a4		; get the SFX channel we were overriding
-
-.checkunint
 		tst.b	(a4)			; check if that channel is running a tracker
 		bpl.s	.exit			; if not, branch
+
+	if FEATURE_PSGADSR
+		move.w	a1,-(sp)		; push channel pointer
+		lea	dMusADSRtbl-8(pc),a1	; get PSG ADSR table address to a1
+		move.w	(a1,d3.w),a1		; load the PSG ADSR entry this channel uses
+
+		move.b	#$7F,(a1)+		; set to max volume
+		or.b	#adpRelease,(a1)	; force release
+		move.w	(sp)+,a1		; pop the current channel
+	endif
 
 .unintpsg
 		bclr	#cfbInt,(a4)		; channel is not interrupted anymore
@@ -1375,6 +1387,19 @@ dcStop:
 		bne.s	.exit			; if not, skip
 		move.b	cStatPSG4(a4),dPSG.l	; update PSG4 status to PSG port
 		bra.s	.exit
+; ---------------------------------------------------------------------------
+
+	if FEATURE_PSGADSR
+dMusADSRtbl:
+		dc.w mADSR+aPSG1		; PSG1
+		dc.w mADSR+aPSG2		; PSG2
+		dc.w mADSR+aPSG3		; PSG3
+		if FEATURE_PSG4
+			dc.w mADSR+aPSG4	; PSG4
+		else
+			dc.w mADSR+aPSG3	; PSG4
+		endif
+	endif
 ; ===========================================================================
 ; ---------------------------------------------------------------------------
 ; Tracker command for enabling LFO

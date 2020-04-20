@@ -289,6 +289,14 @@ dNotesPSG4:
 
 dKeyOffPSG:
 		bset	#cfbVol,(a1)		; force volume update
+
+dKeyOffPSG2:
+		tst.b	cADSR(a1)		; check if ADSR is 0
+		bne.s	.normal			; if so, there is an exception
+		move.b	#$7F,(a3)		; forcibly mute ADSR
+		move.w	#$4000,d1		; set volume to mute
+
+.normal
 		moveq	#admMask,d3		; prapre only the mode bits
 		and.b	adFlags(a3),d3		; get mode bits from flags
 
