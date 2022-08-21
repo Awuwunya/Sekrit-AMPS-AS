@@ -4,4 +4,4 @@ An experimental version of AMPS with extra features that are less tested and les
 * Special FM3 mode with CSM mode support
 * ADSR for PSG
 * PSG4 as a separate channel
-* Spatial and doppler effects for sfx
+
